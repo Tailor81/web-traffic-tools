@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <h1 class="display-6 mb-4">Your Profile</h1>
+        
+        <div class="row">
+            <!-- User Information -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center">
+                        <i class="fas fa-user-circle me-2"></i>
+                        <h3 class="h5 mb-0">Account Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3" style="width: 100px; height: 100px;">
+                                <i class="fas fa-user fa-3x text-primary"></i>
+                            </div>
+                            <h4>{{ user.username }}</h4>
+                        </div>
+                        
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item px-0">
+                                <strong><i class="fas fa-envelope me-2"></i>Email:</strong>
+                                <span class="d-block mt-1">{{ user.email|default:"Not provided" }}</span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <strong><i class="fas fa-calendar me-2"></i>Joined:</strong>
+                                <span class="d-block mt-1">{{ user.date_joined|date:"F j, Y" }}</span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <strong><i class="fas fa-key me-2"></i>Last Login:</strong>
+                                <span class="d-block mt-1">{{ user.last_login|date:"F j, Y, g:i a" }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="#" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit me-1"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Preferences -->
+            <div class="col-md-8 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center">
+                        <i class="fas fa-sliders-h me-2"></i>
+                        <h3 class="h5 mb-0">Dashboard Preferences</h3>
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Default Dashboard View</label>
+                                <select class="form-select">
+                                    <option selected>Traffic Overview</option>
+                                    <option>Geographic Analysis</option>
+                                    <option>Conversion Metrics</option>
+                                    <option>Custom View</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Date Range Preference</label>
+                                <select class="form-select">
+                                    <option>Last 24 Hours</option>
+                                    <option selected>Last 7 Days</option>
+                                    <option>Last 30 Days</option>
+                                    <option>Last 3 Months</option>
+                                    <option>Last 12 Months</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Chart Type Preference</label>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="lineCharts" checked>
+                                            <label class="form-check-label" for="lineCharts">Line Charts</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="barCharts" checked>
+                                            <label class="form-check-label" for="barCharts">Bar Charts</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="pieCharts" checked>
+                                            <label class="form-check-label" for="pieCharts">Pie Charts</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="heatmaps">
+                                            <label class="form-check-label" for="heatmaps">Heatmaps</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Data Refresh Rate</label>
+                                <select class="form-select">
+                                    <option>Real-time (Auto refresh)</option>
+                                    <option selected>Manual refresh only</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Save Preferences
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <i class="fas fa-history me-2"></i>
+                <h3 class="h5 mb-0">Recent Activity</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>No recent activity to display</td>
+                                <td>-</td>
+                                <td>-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent text-end">
+                <a href="#" class="btn btn-outline-secondary btn-sm">View All Activity</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

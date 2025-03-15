@@ -1,0 +1,116 @@
+/* Main styling */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+/* Custom navbar styling */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    color: #0066cc !important;
+}
+
+/* Home page hero section */
+.hero-section {
+    background: linear-gradient(135deg, #0066cc 0%, #2a80d2 100%);
+    color: white;
+    padding: 3rem 0;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.hero-section h1 {
+    font-weight: 700;
+}
+
+/* Cards styling */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    background-color: #f1f5f9;
+    border-bottom: none;
+    font-weight: 600;
+}
+
+/* Feature cards */
+.feature-card {
+    height: 100%;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.feature-card i {
+    font-size: 2.5rem;
+    color: #0066cc;
+    margin-bottom: 1rem;
+}
+
+/* Button styling */
+.btn-primary {
+    background-color: #0066cc;
+    border-color: #0066cc;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background-color: #0055aa;
+    border-color: #0055aa;
+}
+
+/* Form styling */
+.form-control {
+    border-radius: 4px;
+    padding: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #0066cc;
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+/* Footer styling */
+footer {
+    background-color: #343a40;
+    padding: 1.5rem 0;
+    margin-top: 3rem;
+}
+
+/* Dashboard components */
+.dashboard-card {
+    height: 100%;
+}
+
+.stats-card {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.stats-card .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #0066cc;
+}
+
+.stats-card .stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}

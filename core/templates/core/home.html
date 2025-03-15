@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section p-4 p-md-5 rounded">
+    <div class="row align-items-center">
+        <div class="col-lg-8">
+            <h1 class="display-4 fw-bold">AI-Solutions Web Traffic Analyzer</h1>
+            <p class="lead my-3">
+                Transform your web server logs into actionable insights with our powerful analytics platform.
+            </p>
+            <p class="mb-4">
+                Upload your IIS web server logs and discover patterns in user behavior, 
+                geographic distribution, and conversion rates.
+            </p>
+            {% if user.is_authenticated %}
+                <a class="btn btn-light btn-lg" href="#" role="button">
+                    <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                </a>
+            {% else %}
+                <a class="btn btn-light btn-lg" href="{% url 'core:signup' %}" role="button">
+                    <i class="fas fa-rocket me-2"></i>Get Started
+                </a>
+                <a class="btn btn-outline-light btn-lg ms-2" href="{% url 'core:about' %}" role="button">
+                    <i class="fas fa-info-circle me-2"></i>Learn More
+                </a>
+            {% endif %}
+        </div>
+        <div class="col-lg-4 d-none d-lg-block text-center">
+            <i class="fas fa-chart-network" style="font-size: 200px; opacity: 0.8;"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<h2 class="text-center mt-5 mb-4">Key Features</h2>
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card feature-card">
+            <i class="fas fa-chart-line"></i>
+            <h3>Traffic Analysis</h3>
+            <p>Visualize traffic patterns and identify peak usage times to optimize your content strategy.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card feature-card">
+            <i class="fas fa-globe-americas"></i>
+            <h3>Geographic Insights</h3>
+            <p>See where your visitors are coming from with detailed maps and region-based analysis.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card feature-card">
+            <i class="fas fa-funnel-dollar"></i>
+            <h3>Conversion Tracking</h3>
+            <p>Monitor conversion rates, page performance, and user journey through your website.</p>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works Section -->
+<h2 class="text-center mt-5 mb-4">How It Works</h2>
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-upload fs-4"></i>
+                            </div>
+                            <h5>Upload</h5>
+                            <p class="small">Upload your web server logs</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-cogs fs-4"></i>
+                            </div>
+                            <h5>Process</h5>
+                            <p class="small">Automatic data processing and enrichment</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-chart-pie fs-4"></i>
+                            </div>
+                            <h5>Visualize</h5>
+                            <p class="small">Interactive dashboards show patterns</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3">
+                            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center mb-3" style="width: 60px; height: 60px;">
+                                <i class="fas fa-file-pdf fs-4"></i>
+                            </div>
+                            <h5>Report</h5>
+                            <p class="small">Generate shareable reports</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action -->
+<div class="text-center mt-5 p-4 bg-light rounded">
+    <h2>Ready to analyze your web traffic?</h2>
+    <p class="lead">Sign up today and start gaining valuable insights from your data.</p>
+    <a class="btn btn-primary btn-lg mt-3" href="{% url 'core:signup' %}">Create Your Account</a>
+</div>
+{% endblock %}

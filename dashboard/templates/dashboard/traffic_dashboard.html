@@ -1,0 +1,8 @@
+{% extends "dashboard/dashboard_base.html" %}
+
+{% block dashboard_content %}
+<div class="dash-app-container">
+    {% load plotly_dash %}
+    <div>{% plotly_app name="TrafficDashboard" %}</div>
+</div>
+{% endblock %}

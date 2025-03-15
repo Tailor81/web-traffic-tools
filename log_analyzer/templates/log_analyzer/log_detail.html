@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Log Details - {{ log_file.name }} - Web Traffic Analysis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .progress-bar {
+        transition: width 0.5s ease;
+    }
+    
+    .stats-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .log-entries-table {
+        font-size: 0.875rem;
+    }
+    
+    .log-entries-table th, .log-entries-table td {
+        padding: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ log_file.name }}</h1>
+        <div>
+            <a href="{% url 'log_analyzer:log_list' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i> Back to List
+            </a>
+            {% if log_file.status == 'completed' %}
+                <a href="{% url 'log_analyzer:export_log_data' log_file.id %}" class="btn btn-success ms-2">
+                    <i class="fas fa-download me-1"></i> Export Data
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Log Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong><i class="fas fa-file me-1"></i> Filename:</strong>
+                        <span class="ms-2">{{ log_file.name }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-calendar me-1"></i> Uploaded:</strong>
+                        <span class="ms-2">{{ log_file.uploaded_at|date:"F j, Y, g:i a" }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-user me-1"></i> Uploaded By:</strong>
+                        <span class="ms-2">{{ log_file.uploaded_by.username }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-chart-bar me-1"></i> Total Entries:</strong>
+                        <span class="ms-2">{{ log_file.total_entries }}</span>
+                    </div>
+                    {% if log_file.processed_at %}
+                        <div class="mb-3">
+                            <strong><i class="fas fa-check-circle me-1"></i> Processed:</strong>
+                            <span class="ms-2">{{ log_file.processed_at|date:"F j, Y, g:i a" }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Processing Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong><i class="fas fa-tasks me-1"></i> Status:</strong>
+                        <span class="ms-2">
+                            {% if log_file.status == 'pending' %}
+                                <span class="badge bg-secondary">Pending</span>
+                            {% elif log_file.status == 'processing' %}
+                                <span class="badge bg-info">Processing</span>
+                            {% elif log_file.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif log_file.status == 'failed' %}
+                                <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if log_file.status == 'processing' %}
+                        <div class="mb-3">
+                            <strong><i class="fas fa-cog me-1"></i> Progress:</strong>
+                            <div class="progress mt-2">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: {{ log_file.get_processing_progress }}%;" 
+                                     aria-valuenow="{{ log_file.get_processing_progress }}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    <span id="progress-text">{{ log_file.get_processing_progress }}%</span>
+                                </div>
+                            </div>
+                            <small class="text-muted mt-1 d-block">
+                                <span id="processed-count">{{ log_file.entries_processed }}</span> / 
+                                <span id="total-count">{{ log_file.total_entries }}</span> entries processed
+                            </small>
+                        </div>
+                    {% endif %}
+                    
+                    {% if log_file.status == 'failed' and log_file.error_message %}
+                        <div class="alert alert-danger mt-3">
+                            <h6><i class="fas fa-exclamation-triangle me-1"></i> Error:</h6>
+                            <p class="mb-0">{{ log_file.error_message }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if log_file.status == 'completed' and analysis %}
+        <h2 class="mb-3">Analysis</h2>
+        
+        <div class="row row-cols-1 row-cols-md-4 g-4 mb-4">
+            <div class="col">
+                <div class="card stats-card bg-primary text-white h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-line fa-3x mb-3"></i>
+                        <h5 class="card-title">Total Entries</h5>
+                        <p class="card-text display-6">{{ analysis.total_entries }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col">
+                <div class="card stats-card bg-success text-white h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-check-circle fa-3x mb-3"></i>
+                        <h5 class="card-title">Success Requests</h5>
+                        <p class="card-text display-6">{{ analysis.by_status.200|default:0 }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col">
+                <div class="card stats-card bg-warning text-white h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-exchange-alt fa-3x mb-3"></i>
+                        <h5 class="card-title">Redirects</h5>
+                        {% with redirect_301=analysis.by_status.301|default:0 redirect_302=analysis.by_status.302|default:0 %}
+                            <p class="card-text display-6">{{ redirect_301|add:redirect_302 }}</p>
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col">
+                <div class="card stats-card bg-danger text-white h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                        <h5 class="card-title">Errors</h5>
+                        {% with error_404=analysis.by_status.404|default:0 error_500=analysis.by_status.500|default:0 %}
+                            <p class="card-text display-6">{{ error_404|add:error_500 }}</p>
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Page Categories</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="categoriesChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Geographic Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="countriesChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <h2 class="mb-3">Log Entries</h2>
+    <div class="card">
+        <div class="card-body">
+            {% if entries %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover log-entries-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>IP Address</th>
+                                <th>Method</th>
+                                <th>Resource</th>
+                                <th>Status</th>
+                                <th>Country</th>
+                                <th>Category</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                                <tr>
+                                    <td>{{ entry.timestamp|date:"M d, Y H:i:s" }}</td>
+                                    <td>{{ entry.ip_address }}</td>
+                                    <td>{{ entry.http_method }}</td>
+                                    <td class="text-truncate" style="max-width: 200px;">{{ entry.resource }}</td>
+                                    <td>
+                                        {% if entry.status_code == 200 %}
+                                            <span class="badge bg-success">{{ entry.status_code }}</span>
+                                        {% elif entry.status_code == 301 or entry.status_code == 302 %}
+                                            <span class="badge bg-warning text-dark">{{ entry.status_code }}</span>
+                                        {% elif entry.status_code == 404 or entry.status_code == 500 %}
+                                            <span class="badge bg-danger">{{ entry.status_code }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ entry.status_code }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ entry.country|default:'-' }}</td>
+                                    <td>{{ entry.page_category|default:'-' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted mt-3">Showing the latest {{ entries|length }} entries.</p>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <h3>No Log Entries</h3>
+                    <p class="text-muted">This log file does not contain any entries or hasn't been processed yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if log_file.status == 'processing' %}
+<script>
+    // Function to update progress
+    function updateProgress() {
+        fetch('{% url 'log_analyzer:check_log_status' log_file.id %}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'processing') {
+                    // Update progress bar
+                    const progressBar = document.getElementById('progress-bar');
+                    progressBar.style.width = data.progress + '%';
+                    progressBar.setAttribute('aria-valuenow', data.progress);
+                    document.getElementById('progress-text').textContent = data.progress + '%';
+                    
+                    // Update count
+                    document.getElementById('processed-count').textContent = data.entries_processed;
+                    document.getElementById('total-count').textContent = data.total_entries;
+                    
+                    // Check again in 2 seconds
+                    setTimeout(updateProgress, 2000);
+                } else {
+                    // Reload page when processing is complete or failed
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking log status:', error);
+                // Try again after a delay
+                setTimeout(updateProgress, 5000);
+            });
+    }
+    
+    // Start progress updates
+    document.addEventListener('DOMContentLoaded', function() {
+        updateProgress();
+    });
+</script>
+{% endif %}
+
+{% if log_file.status == 'completed' and analysis %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Prepare data for charts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Categories chart
+        const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
+        const categoriesChart = new Chart(categoriesCtx, {
+            type: 'pie',
+            data: {
+                labels: [
+                    {% for category, count in analysis.by_category.items %}
+                        '{{ category }}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    data: [
+                        {% for category, count in analysis.by_category.items %}
+                            {{ count }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: [
+                        '#0d6efd', '#20c997', '#fd7e14', '#6f42c1', 
+                        '#d63384', '#0dcaf0', '#ffc107', '#6c757d'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+        
+        // Countries chart
+        const countriesCtx = document.getElementById('countriesChart').getContext('2d');
+        const countriesChart = new Chart(countriesCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for country, count in analysis.by_country.items %}
+                        '{{ country }}',
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Requests by Country',
+                    data: [
+                        {% for country, count in analysis.by_country.items %}
+                            {{ count }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: '#0d6efd',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+# Core Django
+Django
+
+# Data processing & analysis
+pandas
+numpy
+scipy
+
+# Dashboard & visualization
+plotly
+dash
+dash-bootstrap-components
+django-plotly-dash
+dpd-static-support
+
+# Geographic data
+geoip2
+maxminddb
+
+# Database
+psycopg2-binary
+
+# Web server
+gunicorn
+whitenoise
+
+# Image processing
+Pillow
+
+# Development & testing
+pytest
+pytest-django
+coverage

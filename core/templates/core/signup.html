@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Web Traffic Analysis{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Style Django form elements */
+    .form-label { font-weight: 600; }
+    
+    /* Style form fields */
+    form input, form select, form textarea {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    
+    form input:focus, form select:focus, form textarea:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center py-3">
+                <h2 class="h4 mb-0"><i class="fas fa-user-plus me-2"></i>Create Account</h2>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {% if field.name == 'username' %}
+                                    <i class="fas fa-user me-1"></i>
+                                {% elif 'password' in field.name %}
+                                    <i class="fas fa-lock me-1"></i>
+                                {% endif %}
+                                {{ field.label }}
+                            </label>
+                            
+                            {{ field }}
+                            
+                            {% if field.errors %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger mt-1">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if field.help_text %}
+                                <small class="form-text text-muted">{{ field.help_text|safe }}</small>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Sign Up
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-4 text-center">
+                    <p class="mb-0">Already have an account? <a href="{% url 'core:login' %}">Login here</a></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 bg-light">
+            <div class="card-body p-3">
+                <h5><i class="fas fa-shield-alt text-primary me-2"></i>Your Privacy Matters</h5>
+                <p class="small mb-0">
+                    We take data security seriously. Your information is encrypted and securely stored.
+                    We never share your personal information with third parties without your consent.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

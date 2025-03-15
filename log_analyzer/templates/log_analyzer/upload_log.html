@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Log File - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0"><i class="fas fa-upload me-2"></i>Upload Log File</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">Select a log file</label>
+                            {{ form.file }}
+                            <div class="form-text">Supported formats: CSV, LOG, TXT files in IIS log format.</div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h5 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Expected Format</h5>
+                            <p>Files should be in IIS log format with the following structure:</p>
+                            <pre><code>time IP-address HTTP-method resource status-code</code></pre>
+                            <p>Example:</p>
+                            <pre><code>02:49:36 128.1.0.0 GET /index.html 200
+03:01:07 155.55.0.24 GET /images/events.jpg 304
+01:20:04 157.20.5.0 GET /event.php 200</code></pre>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'log_analyzer:log_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-1"></i> Upload
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        padding: 1rem 0;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dashboard-controls {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .dash-app-container {
+        min-height: 600px;
+    }
+    
+    .dashboard-sidebar {
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+        padding: 1rem;
+        min-height: calc(100vh - 200px);
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: #0d6efd;
+    }
+    
+    .dashboard-container .card {
+        height: 100%;
+    }
+    
+    .dashboard-container .card-header {
+        background-color: #f1f5f9;
+        padding: 0.75rem 1rem;
+    }
+    
+    .dashboard-container .card-header h5 {
+        margin-bottom: 0;
+    }
+    
+    /* Hide Dash dev tools in production */
+    ._dash-dev-tools {
+        display: none !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>{{ dashboard_title }}</h1>
+            <div>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'dashboard:traffic' %}" class="btn btn-outline-primary {% if dashboard_type == 'traffic' %}active{% endif %}">
+                        <i class="fas fa-chart-line me-1"></i> Traffic
+                    </a>
+                    <a href="{% url 'dashboard:geo' %}" class="btn btn-outline-primary {% if dashboard_type == 'geo' %}active{% endif %}">
+                        <i class="fas fa-globe me-1"></i> Geographic
+                    </a>
+                    <a href="{% url 'dashboard:conversion' %}" class="btn btn-outline-primary {% if dashboard_type == 'conversion' %}active{% endif %}">
+                        <i class="fas fa-funnel-dollar me-1"></i> Conversion
+                    </a>
+                </div>
+                <button class="btn btn-outline-secondary ms-2" id="savePreferenceBtn">
+                    <i class="fas fa-save me-1"></i> Save as Default
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    {% block dashboard_content %}{% endblock %}
+</div>
+
+{% block extra_js %}
+<script>
+    document.getElementById('savePreferenceBtn').addEventListener('click', function() {
+        // Save current dashboard as user preference
+        fetch('{% url "dashboard:save_preference" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: new URLSearchParams({
+                'dashboard_type': '{{ dashboard_type }}',
+                'is_default': 'true',
+                'settings': '{}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Dashboard preference saved!');
+            } else {
+                alert('Failed to save preference.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while saving preference.');
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,101 @@
+timestamp,ip_address,http_method,resource,status_code,country,page_category
+2025-03-13 18:32:46,157.20.0.98,GET,/scheduledemo.php,302,Canada,demo
+2025-03-13 19:09:56,10.0.0.162,PUT,/virtual-assistant.php,301,China,product
+2025-03-13 09:13:20,157.20.0.230,POST,/event.php,200,United Kingdom,events
+2025-03-13 05:15:55,172.16.0.150,POST,/index.html,302,United States,home
+2025-03-13 15:12:32,172.16.0.249,DELETE,/about.html,302,United Kingdom,about
+2025-03-13 20:03:10,192.168.1.152,GET,/contact.php,404,China,contact
+2025-03-13 15:09:47,10.0.0.94,GET,/images/logo.png,200,France,static
+2025-03-13 17:32:55,157.20.0.74,PUT,/scheduledemo.php,302,United Kingdom,demo
+2025-03-13 06:16:26,172.16.0.198,DELETE,/about.html,404,United States,about
+2025-03-13 01:57:54,128.1.0.249,GET,/index.html,200,China,home
+2025-03-13 01:59:55,157.20.0.48,GET,/contact.php,302,France,contact
+2025-03-13 16:32:06,10.0.0.209,PUT,/event.php,404,Canada,events
+2025-03-13 17:46:03,128.1.0.154,GET,/virtual-assistant.php,301,United Kingdom,product
+2025-03-13 12:29:50,172.16.0.114,PUT,/about.html,302,Germany,about
+2025-03-13 11:38:09,192.168.1.210,POST,/virtual-assistant.php,404,United Kingdom,product
+2025-03-13 19:34:10,157.20.0.33,GET,/prototype.php,302,Germany,product
+2025-03-13 09:56:13,157.20.0.251,DELETE,/index.html,404,United States,home
+2025-03-13 20:35:10,157.20.0.17,PUT,/event.php,301,United States,events
+2025-03-13 01:08:14,192.168.1.143,POST,/images/logo.png,301,India,static
+2025-03-13 07:48:08,157.20.0.118,POST,/index.html,302,United States,home
+2025-03-13 21:23:05,157.20.0.200,DELETE,/contact.php,404,Japan,contact
+2025-03-13 11:45:14,157.20.0.153,POST,/event.php,302,Japan,events
+2025-03-13 05:27:53,128.1.0.20,PUT,/images/logo.png,301,Japan,static
+2025-03-13 23:17:30,10.0.0.52,POST,/scheduledemo.php,404,Japan,demo
+2025-03-13 03:08:27,157.20.0.56,GET,/images/logo.png,302,France,static
+2025-03-13 05:34:49,128.1.0.7,POST,/prototype.php,302,China,product
+2025-03-13 16:32:35,157.20.0.41,DELETE,/about.html,302,Australia,about
+2025-03-13 13:12:10,192.168.1.225,GET,/contact.php,404,Canada,contact
+2025-03-13 22:11:54,192.168.1.189,DELETE,/images/logo.png,200,Japan,static
+2025-03-13 06:24:45,192.168.1.250,POST,/prototype.php,404,Japan,product
+2025-03-13 21:55:20,157.20.0.175,PUT,/index.html,404,India,home
+2025-03-13 07:44:13,192.168.1.12,GET,/index.html,500,Japan,home
+2025-03-13 04:47:54,157.20.0.163,GET,/contact.php,302,Germany,contact
+2025-03-13 10:15:18,157.20.0.25,PUT,/virtual-assistant.php,404,India,product
+2025-03-13 00:51:23,192.168.1.24,GET,/about.html,500,France,about
+2025-03-13 12:03:22,157.20.0.8,POST,/event.php,200,Canada,events
+2025-03-13 09:16:13,157.20.0.131,PUT,/scheduledemo.php,301,Australia,demo
+2025-03-13 10:43:36,192.168.1.215,PUT,/virtual-assistant.php,500,United States,product
+2025-03-13 07:05:37,128.1.0.9,DELETE,/contact.php,500,Brazil,contact
+2025-03-13 16:49:24,172.16.0.142,DELETE,/scheduledemo.php,500,China,demo
+2025-03-13 01:09:19,10.0.0.194,GET,/prototype.php,302,Germany,product
+2025-03-13 17:43:55,128.1.0.160,PUT,/scheduledemo.php,200,United States,demo
+2025-03-13 20:59:06,192.168.1.232,POST,/images/logo.png,200,France,static
+2025-03-13 02:29:27,10.0.0.70,POST,/images/logo.png,301,India,static
+2025-03-13 14:09:15,128.1.0.227,POST,/scheduledemo.php,200,United Kingdom,demo
+2025-03-13 08:13:21,128.1.0.147,PUT,/index.html,200,Japan,home
+2025-03-13 15:03:07,128.1.0.138,PUT,/images/logo.png,301,China,static
+2025-03-13 03:49:46,128.1.0.51,GET,/event.php,404,Japan,events
+2025-03-13 04:36:43,192.168.1.40,DELETE,/event.php,200,Brazil,events
+2025-03-13 18:00:21,192.168.1.211,DELETE,/scheduledemo.php,200,China,demo
+2025-03-13 09:18:19,128.1.0.96,PUT,/scheduledemo.php,200,India,demo
+2025-03-13 01:41:45,192.168.1.172,DELETE,/scheduledemo.php,302,France,demo
+2025-03-13 03:31:16,192.168.1.239,PUT,/about.html,301,United Kingdom,about
+2025-03-13 04:16:27,128.1.0.135,GET,/contact.php,302,China,contact
+2025-03-13 18:00:06,157.20.0.150,PUT,/prototype.php,404,Canada,product
+2025-03-13 17:55:21,172.16.0.11,PUT,/contact.php,500,Brazil,contact
+2025-03-13 17:38:10,157.20.0.62,GET,/scheduledemo.php,302,Japan,demo
+2025-03-13 16:01:03,128.1.0.139,GET,/index.html,301,Germany,home
+2025-03-13 06:33:15,192.168.1.204,DELETE,/contact.php,200,Japan,contact
+2025-03-13 02:11:31,192.168.1.212,DELETE,/images/logo.png,301,Australia,static
+2025-03-13 05:00:51,192.168.1.63,POST,/contact.php,200,Canada,contact
+2025-03-13 08:36:26,10.0.0.63,PUT,/prototype.php,500,United States,product
+2025-03-13 18:53:07,192.168.1.153,POST,/prototype.php,301,United Kingdom,product
+2025-03-13 11:04:27,172.16.0.105,POST,/contact.php,200,Australia,contact
+2025-03-13 17:51:00,192.168.1.68,POST,/prototype.php,302,Japan,product
+2025-03-13 07:04:55,10.0.0.54,POST,/prototype.php,302,United Kingdom,product
+2025-03-13 17:37:19,157.20.0.27,DELETE,/virtual-assistant.php,500,Japan,product
+2025-03-13 00:52:47,10.0.0.171,PUT,/virtual-assistant.php,200,Brazil,product
+2025-03-13 23:48:54,128.1.0.91,DELETE,/images/logo.png,500,Canada,static
+2025-03-13 13:49:02,192.168.1.64,PUT,/images/logo.png,200,France,static
+2025-03-13 18:28:13,192.168.1.224,DELETE,/scheduledemo.php,404,Canada,demo
+2025-03-13 15:36:26,10.0.0.77,POST,/index.html,301,Australia,home
+2025-03-13 11:24:26,192.168.1.187,DELETE,/prototype.php,500,Canada,product
+2025-03-13 20:29:04,192.168.1.158,GET,/images/logo.png,301,United States,static
+2025-03-13 01:22:36,192.168.1.129,POST,/index.html,200,India,home
+2025-03-13 14:29:16,128.1.0.243,PUT,/event.php,404,France,events
+2025-03-13 21:16:41,192.168.1.211,PUT,/scheduledemo.php,200,China,demo
+2025-03-13 17:00:25,172.16.0.206,GET,/scheduledemo.php,500,India,demo
+2025-03-13 13:32:17,10.0.0.131,DELETE,/scheduledemo.php,200,Japan,demo
+2025-03-13 04:36:29,172.16.0.245,PUT,/about.html,200,United States,about
+2025-03-13 17:57:14,172.16.0.177,DELETE,/prototype.php,500,Germany,product
+2025-03-13 07:04:45,172.16.0.229,POST,/index.html,301,United States,home
+2025-03-13 07:46:12,172.16.0.207,POST,/contact.php,302,United States,contact
+2025-03-13 02:35:31,157.20.0.63,DELETE,/scheduledemo.php,301,Japan,demo
+2025-03-13 18:19:34,157.20.0.70,PUT,/event.php,200,India,events
+2025-03-13 20:29:07,157.20.0.71,PUT,/about.html,302,Brazil,about
+2025-03-13 16:08:58,157.20.0.90,DELETE,/prototype.php,302,Canada,product
+2025-03-13 07:01:42,157.20.0.103,POST,/event.php,200,Brazil,events
+2025-03-13 00:54:06,10.0.0.118,PUT,/prototype.php,200,Australia,product
+2025-03-13 16:09:54,157.20.0.255,POST,/index.html,301,Australia,home
+2025-03-13 17:18:21,128.1.0.202,DELETE,/virtual-assistant.php,302,United States,product
+2025-03-13 00:37:15,172.16.0.49,PUT,/event.php,301,Germany,events
+2025-03-13 00:17:53,10.0.0.218,DELETE,/index.html,404,Canada,home
+2025-03-13 16:22:39,157.20.0.207,DELETE,/images/logo.png,302,Canada,static
+2025-03-13 20:37:52,192.168.1.132,POST,/contact.php,301,Brazil,contact
+2025-03-13 08:47:17,10.0.0.83,DELETE,/about.html,404,Germany,about
+2025-03-13 15:25:20,192.168.1.66,PUT,/event.php,302,Australia,events
+2025-03-13 05:30:43,192.168.1.39,DELETE,/images/logo.png,404,Australia,static
+2025-03-13 10:48:32,172.16.0.66,POST,/images/logo.png,301,United States,static
+2025-03-13 18:11:26,157.20.0.192,GET,/prototype.php,302,France,product
