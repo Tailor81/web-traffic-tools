@@ -60,3 +60,34 @@ class LogEntry(models.Model):
             models.Index(fields=['country']),
             models.Index(fields=['page_category']),
         ]
+        
+
+#External database source
+class ExternalDataSource(models.Model):
+    """Model to store external data source connections"""
+    
+    SOURCE_TYPES = (
+        ('mysql', 'MySQL'),
+        ('postgresql', 'PostgreSQL'),
+        ('mssql', 'Microsoft SQL Server'),
+        ('oracle', 'Oracle'),
+        ('mongodb', 'MongoDB'),
+        ('api', 'REST API'),
+    )
+    
+    name = models.CharField(max_length=255)
+    source_type = models.CharField(max_length=20, choices=SOURCE_TYPES)
+    connection_string = models.CharField(max_length=500, blank=True)
+    host = models.CharField(max_length=255, blank=True)
+    port = models.IntegerField(null=True, blank=True)
+    database = models.CharField(max_length=255, blank=True)
+    username = models.CharField(max_length=255, blank=True)
+    password = models.CharField(max_length=255, blank=True)
+    api_key = models.CharField(max_length=500, blank=True)
+    api_url = models.URLField(blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='data_sources')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return self.name

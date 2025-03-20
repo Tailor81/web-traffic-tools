@@ -1,5 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
+<style>
+    /* Override container constraints for dashboard pages */
+    .content-wrapper, .main-content, .container, .container-fluid {
+        max-width: 100%;
+    }
+    
+    /* Ensure dash apps take full width */
+    .django-plotly-dash {
+        width: 100% !important;
+    }
+</style>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +25,7 @@
     <!-- Custom CSS -->
     <link href="/static/css/style.css" rel="stylesheet">
     {% block extra_css %}{% endblock %}
+    
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -29,6 +42,21 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'core:home' %}">
                             <i class="fas fa-home me-1"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/dashboard/' in request.path %}active{% endif %}" href="{% url 'dashboard:home' %}">
+                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/logs/' in request.path %}active{% endif %}" href="{% url 'log_analyzer:log_list' %}">
+                            <i class="fas fa-file-alt me-1"></i> Logs
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/reports/' in request.path %}active{% endif %}" href="{% url 'reports:report_list' %}">
+                            <i class="fas fa-chart-bar me-1"></i> Reports
                         </a>
                     </li>
                     <li class="nav-item">

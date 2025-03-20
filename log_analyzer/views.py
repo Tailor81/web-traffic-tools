@@ -4,9 +4,9 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
 
-from .models import LogFile, LogEntry
-from .forms import LogFileUploadForm
-from .utils import parse_log_file, enrich_log_data, generate_test_data, analyze_log_data
+from .models import ExternalDataSource, LogFile, LogEntry
+from .forms import ExternalDataSourceForm, LogFileUploadForm
+from .utils import import_from_external_source, parse_log_file, enrich_log_data, generate_test_data, analyze_log_data, test_external_connection
 
 import pandas as pd
 from io import StringIO, BytesIO
@@ -220,3 +220,115 @@ def process_log_file(log_id):
         log_file.status = 'failed'
         log_file.error_message = str(e)
         log_file.save()
+        
+        
+
+
+
+# External database connection
+@login_required
+def external_connections(request):
+    """View to list all external data connections"""
+    connections = ExternalDataSource.objects.filter(created_by=request.user)
+    
+    context = {
+        'connections': connections,
+    }
+    return render(request, 'log_analyzer/external_connections.html', context)
+
+@login_required
+def add_connection(request):
+    """View to add a new external data connection"""
+    if request.method == 'POST':
+        form = ExternalDataSourceForm(request.POST)
+        if form.is_valid():
+            connection = form.save(commit=False)
+            connection.created_by = request.user
+            connection.save()
+            
+            messages.success(request, f'External data source "{connection.name}" created successfully.')
+            return redirect('log_analyzer:external_connections')
+    else:
+        form = ExternalDataSourceForm()
+    
+    context = {
+        'form': form,
+        'source_types': ExternalDataSource.SOURCE_TYPES,
+    }
+    return render(request, 'log_analyzer/add_connection.html', context)
+
+@login_required
+def edit_connection(request, connection_id):
+    """View to edit an external data connection"""
+    connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        form = ExternalDataSourceForm(request.POST, instance=connection)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'External data source "{connection.name}" updated successfully.')
+            return redirect('log_analyzer:external_connections')
+    else:
+        form = ExternalDataSourceForm(instance=connection)
+    
+    context = {
+        'form': form,
+        'connection': connection,
+        'source_types': ExternalDataSource.SOURCE_TYPES,
+    }
+    return render(request, 'log_analyzer/edit_connection.html', context)
+
+@login_required
+def delete_connection(request, connection_id):
+    """View to delete an external data connection"""
+    if request.method == 'POST':
+        connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
+        name = connection.name
+        connection.delete()
+        
+        messages.success(request, f'External data source "{name}" deleted successfully.')
+    return redirect('log_analyzer:external_connections')
+
+@login_required
+def test_connection(request, connection_id):
+    """View to test an external data connection"""
+    connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
+    
+    try:
+        result = test_external_connection(connection)
+        if result['success']:
+            messages.success(request, f'Successfully connected to "{connection.name}".')
+            
+            # Update last used timestamp
+            connection.last_used = timezone.now()
+            connection.save()
+        else:
+            messages.error(request, f'Failed to connect to "{connection.name}": {result["error"]}')
+    except Exception as e:
+        messages.error(request, f'Error testing connection: {str(e)}')
+    
+    return redirect('log_analyzer:external_connections')
+
+@login_required
+def import_from_connection(request, connection_id):
+    """View to import data from an external connection"""
+    connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        try:
+            # Create a log file entry
+            log_file = LogFile.objects.create(
+                name=f"Import from {connection.name} - {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+                uploaded_by=request.user,
+                status='processing'
+            )
+            
+            # Start import in background
+            threading.Thread(target=import_from_external_source, args=(log_file.id, connection.id)).start()
+            
+            messages.success(request, f'Data import from "{connection.name}" started. This may take a few moments.')
+            return redirect('log_analyzer:log_detail', log_id=log_file.id)
+        except Exception as e:
+            messages.error(request, f'Error starting import: {str(e)}')
+    
+    return redirect('log_analyzer:external_connections')

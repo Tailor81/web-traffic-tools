@@ -1,0 +1,31 @@
+Metadata-Version: 2.1
+Name: dpd-static-support
+Version: 0.0.5
+Summary: Support for static assets in django-plotly-dash
+Home-page: https://github.com/GibbsConsulting/dpd-static-support
+Author: Mark Gibbs
+Author-email: dpd-static-support@gibbsconsulting.ca
+License: MIT
+Project-URL: Source, https://github.com/GibbsConsulting/dpd-static-support
+Project-URL: Documentation, http://django-plotly-dash.readthedocs.io/
+Project-URL: Tracker, https://github.com/GibbsConsulting/dpd-static-support/issues
+Keywords: django plotly plotly-dash dash dashboard django-plotly-dash
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.5
+Description-Content-Type: text/markdown
+
+# dpd-static-support
+Support for static assets in django-plotly-dash
+
+## License
+
+The license for this repository covers the infrastructure around the static assets.
+
+The assets themeselves are subject to their own licenses.
+
+
+

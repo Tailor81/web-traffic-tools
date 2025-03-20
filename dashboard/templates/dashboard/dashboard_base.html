@@ -1,52 +1,29 @@
+<!-- dashboard/templates/dashboard/dashboard_base.html -->
 {% extends "base.html" %}
 
 {% block extra_css %}
 <style>
+    /* Override any container constraints */
+    .dashboard-container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+    
+    /* Dashboard header styling */
     .dashboard-header {
-        padding: 1rem 0;
+        padding: 1rem;
         border-bottom: 1px solid #dee2e6;
-        margin-bottom: 1.5rem;
-    }
-    
-    .dashboard-controls {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid #dee2e6;
-    }
-    
-    .dash-app-container {
-        min-height: 600px;
-    }
-    
-    .dashboard-sidebar {
-        background-color: #f8f9fa;
-        border-right: 1px solid #dee2e6;
-        padding: 1rem;
-        min-height: calc(100vh - 200px);
-    }
-    
-    .nav-pills .nav-link.active {
-        background-color: #0d6efd;
-    }
-    
-    .dashboard-container .card {
-        height: 100%;
-    }
-    
-    .dashboard-container .card-header {
-        background-color: #f1f5f9;
-        padding: 0.75rem 1rem;
-    }
-    
-    .dashboard-container .card-header h5 {
         margin-bottom: 0;
     }
     
-    /* Hide Dash dev tools in production */
-    ._dash-dev-tools {
-        display: none !important;
+    /* Remove container constraints */
+    .container, .container-fluid {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding-left: 15px !important;
+        padding-right: 15px !important;
     }
 </style>
 {% endblock %}
@@ -81,7 +58,6 @@
 {% block extra_js %}
 <script>
     document.getElementById('savePreferenceBtn').addEventListener('click', function() {
-        // Save current dashboard as user preference
         fetch('{% url "dashboard:save_preference" %}', {
             method: 'POST',
             headers: {

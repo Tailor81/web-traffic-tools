@@ -12,6 +12,7 @@ dash
 dash-bootstrap-components
 django-plotly-dash
 dpd-static-support
+matplotlib
 
 # Geographic data
 geoip2

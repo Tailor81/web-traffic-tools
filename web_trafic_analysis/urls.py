@@ -8,6 +8,7 @@ urlpatterns = [
     path('', include('core.urls')),
     path('dashboard/', include('dashboard.urls')),
     path('logs/', include('log_analyzer.urls')),
+    path('reports/', include('reports.urls')),
     path('django_plotly_dash/', include('django_plotly_dash.urls')),
 ]
 

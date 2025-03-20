@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Create Report - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0"><i class="fas fa-file-alt me-2"></i>Create Report</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Report Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.name.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.description.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.log_file.id_for_label }}" class="form-label">Log File</label>
+                            {{ form.log_file }}
+                            {% if form.log_file.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.log_file.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Select a processed log file to analyze.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.report_type.id_for_label }}" class="form-label">Report Type</label>
+                                    {{ form.report_type }}
+                                    {% if form.report_type.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.report_type.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.format.id_for_label }}" class="form-label">Format</label>
+                                    {{ form.format }}
+                                    {% if form.format.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.format.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h5 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Report Options</h5>
+                            <p class="mb-0">The report will be generated based on the selected options. Different report types provide different analyses of your log data.</p>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'reports:report_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-alt me-1"></i> Generate Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

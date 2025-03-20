@@ -1,0 +1,149 @@
+<!-- log_analyzer/templates/log_analyzer/add_connection.html -->
+{% extends "base.html" %}
+
+{% block title %}Add External Data Source - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0"><i class="fas fa-plus-circle me-2"></i>Add External Data Source</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Connection Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.source_type.id_for_label }}" class="form-label">Source Type</label>
+                            {{ form.source_type }}
+                            {% if form.source_type.errors %}
+                                <div class="invalid-feedback d-block">{{ form.source_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div id="database-fields">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="{{ form.host.id_for_label }}" class="form-label">Host</label>
+                                        {{ form.host }}
+                                        {% if form.host.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.host.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.port.id_for_label }}" class="form-label">Port</label>
+                                        {{ form.port }}
+                                        {% if form.port.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.port.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.database.id_for_label }}" class="form-label">Database Name</label>
+                                {{ form.database }}
+                                {% if form.database.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.database.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+                                        {{ form.username }}
+                                        {% if form.username.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.username.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
+                                        {{ form.password }}
+                                        {% if form.password.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.password.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="api-fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="{{ form.api_url.id_for_label }}" class="form-label">API URL</label>
+                                {{ form.api_url }}
+                                {% if form.api_url.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.api_url.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">The URL that returns log data in JSON format.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.api_key.id_for_label }}" class="form-label">API Key</label>
+                                {{ form.api_key }}
+                                {% if form.api_key.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.api_key.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">If the API requires authentication, enter your API key here.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'log_analyzer:external_connections' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Save Connection
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Toggle fields based on selected source type
+    document.addEventListener('DOMContentLoaded', function() {
+        const sourceTypeSelect = document.getElementById('{{ form.source_type.id_for_label }}');
+        const databaseFields = document.getElementById('database-fields');
+        const apiFields = document.getElementById('api-fields');
+        
+        function updateFields() {
+            const selectedValue = sourceTypeSelect.value;
+            
+            if (selectedValue === 'api') {
+                databaseFields.style.display = 'none';
+                apiFields.style.display = 'block';
+            } else {
+                databaseFields.style.display = 'block';
+                apiFields.style.display = 'none';
+            }
+        }
+        
+        // Initial update
+        updateFields();
+        
+        // Listen for changes
+        sourceTypeSelect.addEventListener('change', updateFields);
+    });
+</script>
+{% endblock %}
+{% endblock %}

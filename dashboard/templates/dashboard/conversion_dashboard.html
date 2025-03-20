@@ -1,8 +1,310 @@
+<!-- dashboard/templates/dashboard/conversion_dashboard.html -->
 {% extends "dashboard/dashboard_base.html" %}
 
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .metric-card {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+    
+    .chart-container {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+    
+    .stats-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .stats-table th, .stats-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .stats-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
-<div class="dash-app-container">
-    {% load plotly_dash %}
-    <div>{% plotly_app name="ConversionDashboard" %}</div>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <label for="conv-date-range-select">Date Range:</label>
+            <select id="conv-date-range-select" class="form-select">
+                <option value="7">Last 7 Days</option>
+                <option value="14">Last 14 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">Last Year</option>
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="conv-log-file-select">Log File:</label>
+            <select id="conv-log-file-select" class="form-select">
+                <option value="all">All Log Files</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="metric-card">
+                <h5>Total Visitors</h5>
+                <div id="total-visitors" class="metric-value">-</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric-card">
+                <h5>Converting Visitors</h5>
+                <div id="converting-visitors" class="metric-value">-</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric-card">
+                <h5>Conversion Rate</h5>
+                <div id="conversion-rate" class="metric-value">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5>Conversion Statistics</h5>
+                <div id="conversion-stats-container">
+                    <table class="stats-table" id="conversion-stats-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Loading...</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>Conversion Funnel</h5>
+                <div id="conversion-funnel-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>Conversion by Country</h5>
+                <div id="conversion-country-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5>Conversion Rate Over Time</h5>
+                <div id="conversion-time-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+<script>
+    // Function to format numbers with commas
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    
+    // Fetch data and update charts
+    function updateConversionDashboard() {
+        const dateRange = document.getElementById('conv-date-range-select').value;
+        const logFile = document.getElementById('conv-log-file-select').value;
+        
+        fetch(`{% url 'dashboard:conversion_data' %}?days=${dateRange}&log_file_id=${logFile}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update metrics
+                document.getElementById('total-visitors').textContent = formatNumber(data.total_visitors);
+                document.getElementById('converting-visitors').textContent = formatNumber(data.converting_visitors);
+                document.getElementById('conversion-rate').textContent = data.conversion_rate.toFixed(2) + '%';
+                
+                // Update log file dropdown
+                const logFileSelect = document.getElementById('conv-log-file-select');
+                // Save current selection
+                const currentSelection = logFileSelect.value;
+                
+                // Clear options except "All Log Files"
+                while (logFileSelect.options.length > 1) {
+                    logFileSelect.remove(1);
+                }
+                
+                // Add log files
+                data.log_files.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file.id;
+                    option.textContent = file.name;
+                    logFileSelect.appendChild(option);
+                });
+                
+                // Restore selection if possible
+                if (Array.from(logFileSelect.options).some(opt => opt.value === currentSelection)) {
+                    logFileSelect.value = currentSelection;
+                }
+                
+                // Update conversion stats table
+                let statsTableHTML = `
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Total Visitors</td>
+                            <td>${formatNumber(data.total_visitors)}</td>
+                        </tr>
+                        <tr>
+                            <td>Converting Visitors</td>
+                            <td>${formatNumber(data.converting_visitors)}</td>
+                        </tr>
+                        <tr>
+                            <td>Conversion Rate</td>
+                            <td>${data.conversion_rate.toFixed(2)}%</td>
+                        </tr>`;
+                
+                // Add top converting pages if available
+                if (data.conversion_by_page && data.conversion_by_page.length > 0) {
+                    data.conversion_by_page.sort((a, b) => b.count - a.count);
+                    const topPage = data.conversion_by_page[0];
+                    statsTableHTML += `
+                        <tr>
+                            <td>Top Converting Page</td>
+                            <td>${topPage.page} (${formatNumber(topPage.count)} visits)</td>
+                        </tr>`;
+                }
+                
+                // Add top converting country if available
+                if (data.conversion_by_country && data.conversion_by_country.length > 0) {
+                    const topCountry = data.conversion_by_country[0];
+                    statsTableHTML += `
+                        <tr>
+                            <td>Top Converting Country</td>
+                            <td>${topCountry.country} (${formatNumber(topCountry.count)} conversions)</td>
+                        </tr>`;
+                }
+                
+                statsTableHTML += '</tbody>';
+                document.getElementById('conversion-stats-table').innerHTML = statsTableHTML;
+                
+                // Create conversion funnel
+                const funnelStages = ['Visitors', 'Product Pages', 'Demo Request', 'Contact'];
+                const funnelValues = [
+                    data.total_visitors,
+                    Math.round(data.total_visitors * 0.6), // Simulated product page visits
+                    data.conversion_by_page.find(p => p.page.includes('scheduledemo'))?.count || 0,
+                    data.conversion_by_page.find(p => p.page.includes('contact'))?.count || 0
+                ];
+                
+                Plotly.newPlot('conversion-funnel-chart', [{
+                    type: 'funnel',
+                    y: funnelStages,
+                    x: funnelValues,
+                    textinfo: 'value+percent initial'
+                }], {
+                    margin: {l: 120, r: 20, t: 10, b: 10}
+                });
+                
+                // Create conversion by country chart
+                if (data.conversion_by_country && data.conversion_by_country.length > 0) {
+                    const topCountries = data.conversion_by_country.slice(0, 10);
+                    
+                    Plotly.newPlot('conversion-country-chart', [{
+                        y: topCountries.map(item => item.country),
+                        x: topCountries.map(item => item.count),
+                        type: 'bar',
+                        orientation: 'h',
+                        marker: {
+                            color: '#6f42c1',
+                            colorscale: 'Viridis'
+                        }
+                    }], {
+                        margin: {l: 120, r: 20, t: 10, b: 40},
+                        xaxis: {title: 'Number of Conversions'},
+                        yaxis: {title: ''}
+                    });
+                } else {
+                    document.getElementById('conversion-country-chart').innerHTML = 
+                        '<div class="text-center p-5"><h4 class="text-muted">No conversion data by country available</h4></div>';
+                }
+                
+                // Create conversion rate over time chart
+                if (data.conversion_by_date && data.conversion_by_date.length > 0) {
+                    Plotly.newPlot('conversion-time-chart', [{
+                        x: data.conversion_by_date.map(item => item.date),
+                        y: data.conversion_by_date.map(item => item.rate),
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        line: {color: '#20c997', width: 2},
+                        marker: {color: '#20c997', size: 6}
+                    }], {
+                        margin: {l: 40, r: 20, t: 10, b: 40},
+                        xaxis: {title: 'Date'},
+                        yaxis: {title: 'Conversion Rate (%)', ticksuffix: '%'}
+                    });
+                } else {
+                    document.getElementById('conversion-time-chart').innerHTML = 
+                        '<div class="text-center p-5"><h4 class="text-muted">No conversion time series data available</h4></div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching conversion data:', error);
+                alert('Error loading dashboard data. Please try again.');
+            });
+    }
+    
+    // Initial load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateConversionDashboard();
+        
+        // Add event listeners for filters
+        document.getElementById('conv-date-range-select').addEventListener('change', updateConversionDashboard);
+        document.getElementById('conv-log-file-select').addEventListener('change', updateConversionDashboard);
+        
+        // Refresh data every 5 minutes
+        setInterval(updateConversionDashboard, 5 * 60 * 1000);
+    });
+</script>
 {% endblock %}

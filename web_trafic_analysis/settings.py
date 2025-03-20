@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'dashboard.apps.DashboardConfig',
     'log_analyzer.apps.LogAnalyzerConfig',
+    'reports.apps.ReportsConfig',
 ]
 
 MIDDLEWARE = [

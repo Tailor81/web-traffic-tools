@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{{ report.name }} - Report Details - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ report.name }}</h1>
+        <div>
+            <a href="{% url 'reports:report_list' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i> Back to List
+            </a>
+            {% if report.file %}
+                <a href="{% url 'reports:download_report' report.id %}" class="btn btn-success ms-2">
+                    <i class="fas fa-download me-1"></i> Download
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Report Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if report.description %}
+                        <div class="mb-3">
+                            <strong><i class="fas fa-align-left me-1"></i> Description:</strong>
+                            <p class="mt-2">{{ report.description }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <strong><i class="fas fa-file me-1"></i> Report Type:</strong>
+                        <span class="ms-2">
+                            {% if report.report_type == 'summary' %}
+                                <span class="badge bg-primary">Summary Report</span>
+                            {% elif report.report_type == 'detailed' %}
+                                <span class="badge bg-info">Detailed Analysis</span>
+                            {% elif report.report_type == 'geographic' %}
+                                <span class="badge bg-success">Geographic Report</span>
+                            {% elif report.report_type == 'performance' %}
+                                <span class="badge bg-warning">Performance Report</span>
+                            {% elif report.report_type == 'custom' %}
+                                <span class="badge bg-secondary">Custom Report</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong><i class="fas fa-file-export me-1"></i> Format:</strong>
+                        <span class="ms-2">
+                            {% if report.format == 'pdf' %}
+                                <span class="badge bg-danger">PDF</span>
+                            {% elif report.format == 'csv' %}
+                                <span class="badge bg-success">CSV</span>
+                            {% elif report.format == 'excel' %}
+                                <span class="badge bg-primary">Excel</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong><i class="fas fa-calendar me-1"></i> Created:</strong>
+                        <span class="ms-2">{{ report.created_at|date:"F j, Y, g:i a" }}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong><i class="fas fa-user me-1"></i> Created By:</strong>
+                        <span class="ms-2">{{ report.created_by.username }}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong><i class="fas fa-file-alt me-1"></i> Log File:</strong>
+                        <span class="ms-2">{{ report.log_file.name }}</span>
+                    </div>
+                    
+                    {% if report.last_generated %}
+                        <div class="mb-3">
+                            <strong><i class="fas fa-clock me-1"></i> Last Generated:</strong>
+                            <span class="ms-2">{{ report.last_generated|date:"F j, Y, g:i a" }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if report.file %}
+                            <a href="{% url 'reports:download_report' report.id %}" class="btn btn-success">
+                                <i class="fas fa-download me-1"></i> Download Report
+                            </a>
+                        {% endif %}
+                        
+                        <form method="post" action="{% url 'reports:regenerate_report' report.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-sync me-1"></i> Regenerate Report
+                            </button>
+                        </form>
+                        
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-trash me-1"></i> Delete Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if report.file %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Report Preview</h5>
+            </div>
+            <div class="card-body text-center">
+                {% if report.format == 'pdf' %}
+                    <div class="ratio ratio-16x9">
+                        <iframe src="{{ report.file.url }}" allowfullscreen></iframe>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Preview not available for this file format. Please download the report to view its contents.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card mb-4">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                <h3>Report File Not Available</h3>
+                <p class="text-muted">The report file may not have been generated yet or was deleted.</p>
+                <form method="post" action="{% url 'reports:regenerate_report' report.id %}" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync me-1"></i> Generate Report
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the report <strong>{{ report.name }}</strong>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'reports:delete_report' report.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

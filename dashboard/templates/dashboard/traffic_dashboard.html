@@ -1,8 +1,224 @@
+<!-- dashboard/templates/dashboard/traffic_dashboard.html -->
 {% extends "dashboard/dashboard_base.html" %}
 
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .metric-card {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+    
+    .chart-container {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
-<div class="dash-app-container">
-    {% load plotly_dash %}
-    <div>{% plotly_app name="TrafficDashboard" %}</div>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <label for="date-range-select">Date Range:</label>
+            <select id="date-range-select" class="form-select">
+                <option value="7">Last 7 Days</option>
+                <option value="14">Last 14 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">Last Year</option>
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="log-file-select">Log File:</label>
+            <select id="log-file-select" class="form-select">
+                <option value="all">All Log Files</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5>Total Visits</h5>
+                <div id="total-visits" class="metric-value">-</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5>Unique Visitors</h5>
+                <div id="unique-visitors" class="metric-value">-</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5>Success Rate</h5>
+                <div id="success-rate" class="metric-value">-</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5>Error Rate</h5>
+                <div id="error-rate" class="metric-value">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5>Traffic Over Time</h5>
+                <div id="traffic-time-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>Page Categories</h5>
+                <div id="category-pie-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5>HTTP Status Codes</h5>
+                <div id="status-bar-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+<script>
+    // Function to format numbers with commas
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    
+    // Fetch data and update charts
+    function updateDashboard() {
+        const dateRange = document.getElementById('date-range-select').value;
+        const logFile = document.getElementById('log-file-select').value;
+        
+        fetch(`{% url 'dashboard:traffic_data' %}?days=${dateRange}&log_file_id=${logFile}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update metrics
+                document.getElementById('total-visits').textContent = formatNumber(data.total_visits);
+                document.getElementById('unique-visitors').textContent = formatNumber(data.unique_visitors);
+                document.getElementById('success-rate').textContent = data.success_rate.toFixed(1) + '%';
+                document.getElementById('error-rate').textContent = data.error_rate.toFixed(1) + '%';
+                
+                // Update log file dropdown
+                const logFileSelect = document.getElementById('log-file-select');
+                // Save current selection
+                const currentSelection = logFileSelect.value;
+                
+                // Clear options except "All Log Files"
+                while (logFileSelect.options.length > 1) {
+                    logFileSelect.remove(1);
+                }
+                
+                // Add log files
+                data.log_files.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file.id;
+                    option.textContent = file.name;
+                    logFileSelect.appendChild(option);
+                });
+                
+                // Restore selection if possible
+                if (Array.from(logFileSelect.options).some(opt => opt.value === currentSelection)) {
+                    logFileSelect.value = currentSelection;
+                }
+                
+                // Traffic time chart
+                const dailyDates = data.daily_traffic.map(item => item.date);
+                const dailyCounts = data.daily_traffic.map(item => item.count);
+                
+                Plotly.newPlot('traffic-time-chart', [{
+                    x: dailyDates,
+                    y: dailyCounts,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: {color: '#0d6efd', width: 3},
+                    marker: {color: '#0d6efd', size: 6}
+                }], {
+                    margin: {l: 40, r: 20, t: 10, b: 40},
+                    xaxis: {title: 'Date'},
+                    yaxis: {title: 'Visits'}
+                });
+                
+                // Category pie chart
+                Plotly.newPlot('category-pie-chart', [{
+                    labels: data.category_counts.map(item => item.page_category),
+                    values: data.category_counts.map(item => item.count),
+                    type: 'pie',
+                    textinfo: 'percent+label'
+                }], {
+                    margin: {l: 10, r: 10, t: 10, b: 10}
+                });
+                
+                // Status bar chart
+                const statusColors = {
+                    200: '#28a745',  // Success (green)
+                    301: '#ffc107',  // Redirect (yellow)
+                    302: '#ffc107',  // Redirect (yellow)
+                    304: '#17a2b8',  // Not Modified (info)
+                    400: '#fd7e14',  // Bad Request (orange)
+                    404: '#dc3545',  // Not Found (red)
+                    500: '#dc3545'   // Server Error (red)
+                };
+                
+                const statusCodes = data.status_counts.map(item => item.status_code);
+                const statusValues = data.status_counts.map(item => item.count);
+                const statusColorArray = statusCodes.map(code => statusColors[code] || '#6c757d');
+                
+                Plotly.newPlot('status-bar-chart', [{
+                    x: statusCodes,
+                    y: statusValues,
+                    type: 'bar',
+                    marker: {color: statusColorArray}
+                }], {
+                    margin: {l: 40, r: 20, t: 10, b: 40},
+                    xaxis: {title: 'Status Code'},
+                    yaxis: {title: 'Count'}
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching traffic data:', error);
+                alert('Error loading dashboard data. Please try again.');
+            });
+    }
+    
+    // Initial load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateDashboard();
+        
+        // Add event listeners for filters
+        document.getElementById('date-range-select').addEventListener('change', updateDashboard);
+        document.getElementById('log-file-select').addEventListener('change', updateDashboard);
+        
+        // Refresh data every 5 minutes
+        setInterval(updateDashboard, 5 * 60 * 1000);
+    });
+</script>
 {% endblock %}
