@@ -40,6 +40,7 @@
                                         {% if form.host.errors %}
                                             <div class="invalid-feedback d-block">{{ form.host.errors }}</div>
                                         {% endif %}
+                                        <div id="host-help" class="form-text">Database host address. For MongoDB Atlas, enter the cluster hostname (e.g. cluster0.pww30.mongodb.net)</div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
@@ -49,6 +50,7 @@
                                         {% if form.port.errors %}
                                             <div class="invalid-feedback d-block">{{ form.port.errors }}</div>
                                         {% endif %}
+                                        <div id="port-help" class="form-text">Port number (optional for MongoDB Atlas)</div>
                                     </div>
                                 </div>
                             </div>
@@ -103,6 +105,18 @@
                             </div>
                         </div>
                         
+                        <div id="mongodb-help" class="alert alert-info mb-3" style="display: none;">
+                            <h5><i class="fas fa-info-circle me-2"></i>MongoDB Atlas Connection Help</h5>
+                            <p>For a MongoDB Atlas connection:</p>
+                            <ul>
+                                <li><strong>Host:</strong> Enter your cluster hostname (e.g., cluster0.pww30.mongodb.net)</li>
+                                <li><strong>Username:</strong> Enter your database username (e.g., aobakwempatane67)</li>
+                                <li><strong>Password:</strong> Enter your database password</li>
+                                <li><strong>Database:</strong> Enter the name of your database</li>
+                            </ul>
+                            <p>Port can be left empty for MongoDB Atlas connections.</p>
+                        </div>
+                        
                         <div class="d-flex justify-content-between">
                             <a href="{% url 'log_analyzer:external_connections' %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-1"></i> Back
@@ -125,6 +139,9 @@
         const sourceTypeSelect = document.getElementById('{{ form.source_type.id_for_label }}');
         const databaseFields = document.getElementById('database-fields');
         const apiFields = document.getElementById('api-fields');
+        const mongodbHelp = document.getElementById('mongodb-help');
+        const hostHelp = document.getElementById('host-help');
+        const portHelp = document.getElementById('port-help');
         
         function updateFields() {
             const selectedValue = sourceTypeSelect.value;
@@ -132,9 +149,21 @@
             if (selectedValue === 'api') {
                 databaseFields.style.display = 'none';
                 apiFields.style.display = 'block';
+                mongodbHelp.style.display = 'none';
             } else {
                 databaseFields.style.display = 'block';
                 apiFields.style.display = 'none';
+                
+                // Show MongoDB help text if MongoDB is selected
+                if (selectedValue === 'mongodb') {
+                    mongodbHelp.style.display = 'block';
+                    hostHelp.textContent = 'For MongoDB Atlas, enter the cluster hostname (e.g. cluster0.pww30.mongodb.net)';
+                    portHelp.textContent = 'Port number (optional for MongoDB Atlas)';
+                } else {
+                    mongodbHelp.style.display = 'none';
+                    hostHelp.textContent = 'Database host address';
+                    portHelp.textContent = 'Port number';
+                }
             }
         }
         

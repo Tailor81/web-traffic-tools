@@ -1,0 +1,49 @@
+
+<!-- log_analyzer/templates/log_analyzer/mongodb_data_status.html -->
+{% extends "base.html" %}
+
+{% block title %}MongoDB Data Generated - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h2 class="h4 mb-0"><i class="fas fa-check-circle me-2"></i>MongoDB Data Status</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success mb-4">
+                        <h4 class="alert-heading">Test Data Generated!</h4>
+                        <p>Your MongoDB test data has been generated and uploaded successfully.</p>
+                    </div>
+                    
+                    <h5>What's Next?</h5>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item">
+                            <i class="fas fa-link me-2"></i> <a href="{% url 'log_analyzer:external_connections' %}">Go to External Connections</a>
+                            to create a MongoDB connection to your database.
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-file-import me-2"></i> Use the "Import Data" option on your MongoDB connection
+                            to import the test data into your web traffic analysis system.
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-chart-bar me-2"></i> View detailed analytics of the imported data.
+                        </li>
+                    </ul>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'log_analyzer:external_connections' %}" class="btn btn-primary">
+                            <i class="fas fa-database me-1"></i> Go to External Connections
+                        </a>
+                        <a href="{% url 'log_analyzer:generate_mongodb_data' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-sync me-1"></i> Generate More Data
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

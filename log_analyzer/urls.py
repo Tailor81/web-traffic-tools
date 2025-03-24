@@ -16,4 +16,16 @@ urlpatterns = [
     path('connections/<int:connection_id>/delete/', views.delete_connection, name='delete_connection'),
     path('connections/<int:connection_id>/test/', views.test_connection, name='test_connection'),
     path('connections/<int:connection_id>/import/', views.import_from_connection, name='import_from_connection'),
+    
+    
+    
+    path('mongodb/generate/', views.generate_mongodb_data, name='generate_mongodb_data'),
+    path('mongodb/status/', views.mongodb_data_status, name='mongodb_data_status'),
+    path('mongodb/test-connection/', views.test_mongodb_connection, name='test_mongodb_connection'),
+
+
+
+    # MongoDB real-time sync
+    path('connections/<int:connection_id>/start-sync/', views.start_realtime_sync, name='start_realtime_sync'),
+    path('connections/<int:connection_id>/stop-sync/', views.stop_realtime_sync, name='stop_realtime_sync'),
 ]

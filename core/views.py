@@ -21,7 +21,7 @@ def profile(request):
 class SignUpView(CreateView):
     """Sign up view for new users"""
     form_class = UserCreationForm
-    success_url = reverse_lazy('login')
+    success_url = reverse_lazy('core:login')
     template_name = 'core/signup.html'
     
     def form_valid(self, form):

@@ -6,13 +6,26 @@ from django.contrib import messages
 
 from .models import ExternalDataSource, LogFile, LogEntry
 from .forms import ExternalDataSourceForm, LogFileUploadForm
-from .utils import import_from_external_source, parse_log_file, enrich_log_data, generate_test_data, analyze_log_data, test_external_connection
+from .utils import (
+    import_from_external_source, parse_log_file, enrich_log_data, generate_test_data, 
+    analyze_log_data, test_external_connection, sync_mongodb_data_realtime
+)
 
 import pandas as pd
 from io import StringIO, BytesIO
 import csv
 import threading
 import time
+from urllib.parse import quote_plus
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+import random
+from datetime import datetime, timedelta
+import logging
+import json
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 @login_required
 def log_list(request):
@@ -221,18 +234,20 @@ def process_log_file(log_id):
         log_file.error_message = str(e)
         log_file.save()
         
-        
-
-
-
 # External database connection
 @login_required
 def external_connections(request):
     """View to list all external data connections"""
     connections = ExternalDataSource.objects.filter(created_by=request.user)
     
+    # Check if there are any active syncs
+    active_syncs = {}
+    if 'sync_connections' in request.session:
+        active_syncs = request.session['sync_connections']
+    
     context = {
         'connections': connections,
+        'active_syncs': active_syncs
     }
     return render(request, 'log_analyzer/external_connections.html', context)
 
@@ -330,5 +345,309 @@ def import_from_connection(request, connection_id):
             return redirect('log_analyzer:log_detail', log_id=log_file.id)
         except Exception as e:
             messages.error(request, f'Error starting import: {str(e)}')
+    
+    return redirect('log_analyzer:external_connections')
+
+# MongoDB Test Data Generator
+def generate_log_entries(num_entries=1000):
+    """Generate realistic log entries for web traffic analysis"""
+    now = datetime.now()
+    
+    # Define possible values for various fields
+    methods = ['GET', 'POST', 'PUT', 'DELETE']
+    status_codes = [200, 200, 200, 200, 301, 302, 304, 400, 401, 403, 404, 500]  # Weighted towards 200
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
+        "Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+    ]
+    ip_ranges = [
+        "192.168.1.", "10.0.0.", "172.16.0.", 
+        "203.0.113.", "198.51.100.", "192.0.2.",  # TEST-NET ranges
+        "8.8.8.", "1.1.1.", "9.9.9."  # Public DNS servers (for realism)
+    ]
+    urls = [
+        "/", "/index.html", "/about.html", "/contact.html", "/products/", 
+        "/services.html", "/blog/", "/blog/post1.html", "/blog/post2.html",
+        "/api/data", "/api/users", "/api/auth", 
+        "/static/css/main.css", "/static/js/app.js", "/static/images/logo.png",
+        "/login", "/logout", "/register", "/account", "/cart", "/checkout"
+    ]
+    countries = [
+        "United States", "United Kingdom", "Canada", "Germany", "France", 
+        "Australia", "Japan", "Brazil", "India", "China", "Russia", "South Africa"
+    ]
+    referers = [
+        "", "",  # Empty referers for direct traffic
+        "https://www.google.com/", "https://www.bing.com/", "https://www.yahoo.com/",
+        "https://www.facebook.com/", "https://twitter.com/", "https://www.linkedin.com/",
+        "https://www.instagram.com/", "https://www.reddit.com/"
+    ]
+    
+    entries = []
+    
+    # Generate entries
+    for _ in range(num_entries):
+        # Random time in the past 30 days
+        timestamp = now - timedelta(
+            days=random.randint(0, 30),
+            hours=random.randint(0, 23),
+            minutes=random.randint(0, 59),
+            seconds=random.randint(0, 59)
+        )
+        
+        # Generate IP with appropriate format
+        ip = f"{random.choice(ip_ranges)}{random.randint(1, 254)}"
+        
+        # Get URL and categorize it
+        url = random.choice(urls)
+        if "/static/" in url:
+            category = "static"
+        elif "/api/" in url:
+            category = "api"
+        elif url in ["/", "/index.html"]:
+            category = "home"
+        elif "/blog/" in url:
+            category = "blog"
+        elif url in ["/login", "/logout", "/register", "/account"]:
+            category = "account"
+        elif url in ["/cart", "/checkout"]:
+            category = "ecommerce"
+        elif url in ["/about.html", "/contact.html"]:
+            category = "info"
+        else:
+            category = "other"
+        
+        # Generate a realistic session ID
+        session_id = ''.join(random.choices('0123456789abcdef', k=32))
+        
+        # Create the log entry
+        entry = {
+            "timestamp": timestamp,
+            "ip_address": ip,
+            "http_method": random.choice(methods),
+            "resource": url,
+            "status_code": random.choice(status_codes),
+            "country": random.choice(countries),
+            "page_category": category,
+            "user_agent": random.choice(user_agents),
+            "referer": random.choice(referers),
+            "session_id": session_id,
+            "response_time_ms": random.randint(50, 2000),
+            "bytes_sent": random.randint(500, 150000)
+        }
+        
+        # Add some random parameters to some requests
+        if random.random() < 0.3:  # 30% of requests have parameters
+            entry["query_params"] = {
+                "utm_source": random.choice(["google", "facebook", "twitter", "email", "direct"]),
+                "utm_medium": random.choice(["cpc", "social", "email", "organic"]),
+                "utm_campaign": f"campaign_{random.randint(1, 5)}"
+            }
+        
+        entries.append(entry)
+    
+    # Sort by timestamp
+    entries.sort(key=lambda x: x["timestamp"])
+    
+    return entries
+
+def generate_mongodb_test_data(connection_info, num_entries=1000):
+    """
+    Generate test data and upload it to MongoDB
+    
+    Args:
+        connection_info: Dictionary with MongoDB connection info
+        num_entries: Number of log entries to generate
+    
+    Returns:
+        Dict with status info
+    """
+    try:
+        # Generate test data
+        entries = generate_log_entries(num_entries)
+        
+        # Connect to MongoDB - make sure username and password are properly escaped
+        from urllib.parse import quote_plus
+        
+        # Properly escape username and password for the URI
+        username = quote_plus(connection_info['username'])
+        password = quote_plus(connection_info['password'])
+        
+        uri = f"mongodb+srv://{username}:{password}@{connection_info['host']}/{connection_info['database']}"
+        client = MongoClient(uri, server_api=ServerApi('1'))
+        
+        # Get database and collection
+        db = client[connection_info['database']]
+        collection = db['logs']
+        
+        # Delete existing data if requested
+        if connection_info.get('clear_existing', False):
+            collection.delete_many({})
+            logger.info(f"Cleared existing data from {connection_info['database']}.logs")
+        
+        # Insert the generated data
+        result = collection.insert_many(entries)
+        
+        client.close()
+        
+        return {
+            'success': True, 
+            'message': f"Successfully inserted {len(result.inserted_ids)} documents",
+            'sample': entries[0] if entries else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating MongoDB test data: {str(e)}")
+        return {'success': False, 'error': str(e)}
+
+@login_required
+def generate_mongodb_data(request):
+    """View to generate and upload test data to MongoDB"""
+    if request.method == 'POST':
+        try:
+            # Get parameters from the form
+            num_entries = int(request.POST.get('num_entries', 1000))
+            host = request.POST.get('host', 'cluster0.pww30.mongodb.net')
+            username = request.POST.get('username', 'aobakwempatane67')
+            password = request.POST.get('password', 'Tecboy@1122')
+            database = request.POST.get('database', 'Logs_Database')
+            clear_existing = request.POST.get('clear_existing') == 'on'
+            
+            # Validate input
+            if num_entries < 1:
+                num_entries = 1000
+            elif num_entries > 10000:
+                num_entries = 10000  # Limit to 10,000 entries
+            
+            # Connection info
+            connection_info = {
+                'host': host,
+                'username': username,
+                'password': password,
+                'database': database,
+                'clear_existing': clear_existing
+            }
+            
+            # Generate and upload data
+            result = generate_mongodb_test_data(connection_info, num_entries)
+            
+            if result['success']:
+                messages.success(request, f"{result['message']}")
+                return redirect('log_analyzer:mongodb_data_status')
+            else:
+                messages.error(request, f"Error generating data: {result.get('error', 'Unknown error')}")
+        
+        except Exception as e:
+            messages.error(request, f"Error processing request: {str(e)}")
+    
+    # Display the form
+    return render(request, 'log_analyzer/generate_mongodb_data.html')
+
+@login_required
+def mongodb_data_status(request):
+    """View to display status after generating MongoDB data"""
+    return render(request, 'log_analyzer/mongodb_data_status.html')
+
+@login_required
+def test_mongodb_connection(request):
+    """Simple view to directly test MongoDB connection"""
+    if request.method == 'POST':
+        try:
+            host = request.POST.get('host', 'cluster0.pww30.mongodb.net')
+            username = request.POST.get('username', 'aobakwempatane67')
+            password = request.POST.get('password', 'Tecboy@1122')
+            database = request.POST.get('database', 'Logs_Database')
+            
+            # Escape username and password
+            username_encoded = quote_plus(username)
+            password_encoded = quote_plus(password)
+            
+            # Construct URI
+            uri = f"mongodb+srv://{username_encoded}:{password_encoded}@{host}/{database}"
+            
+            # Connect
+            client = MongoClient(uri, server_api=ServerApi('1'))
+            
+            # Test connection
+            client.admin.command('ping')
+            client.close()
+            
+            messages.success(request, "Successfully connected to MongoDB!")
+            return redirect('log_analyzer:mongodb_data_status')
+            
+        except Exception as e:
+            messages.error(request, f"Error connecting to MongoDB: {str(e)}")
+    
+    # Display the form
+    return render(request, 'log_analyzer/test_mongodb_connection.html')
+
+@login_required
+def start_realtime_sync(request, connection_id):
+    """Start real-time synchronization with MongoDB"""
+    connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        try:
+            # Check if sync is already running for this connection
+            if hasattr(request.session, 'sync_connections') and str(connection_id) in request.session.get('sync_connections', {}):
+                messages.warning(request, f"Real-time sync already running for {connection.name}")
+                return redirect('log_analyzer:log_list')
+            
+            # Start the sync
+            result = sync_mongodb_data_realtime(connection_id, interval=1)
+            
+            if result['success']:
+                # Store sync info in session
+                if not hasattr(request.session, 'sync_connections'):
+                    request.session['sync_connections'] = {}
+                
+                if not isinstance(request.session['sync_connections'], dict):
+                    request.session['sync_connections'] = {}
+                
+                request.session['sync_connections'][str(connection_id)] = {
+                    'log_file_id': result['log_file_id'],
+                    'started_at': timezone.now().isoformat()
+                }
+                request.session.modified = True
+                
+                messages.success(request, f"Real-time sync started with {connection.name}")
+                return redirect('log_analyzer:log_detail', log_id=result['log_file_id'])
+            else:
+                messages.error(request, f"Error starting sync: {result.get('error', 'Unknown error')}")
+        except Exception as e:
+            messages.error(request, f"Error starting real-time sync: {str(e)}")
+    
+    return redirect('log_analyzer:external_connections')
+
+@login_required
+def stop_realtime_sync(request, connection_id):
+    """Stop real-time synchronization with MongoDB"""
+    connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        try:
+            # Check if sync is running for this connection
+            if hasattr(request.session, 'sync_connections') and str(connection_id) in request.session.get('sync_connections', {}):
+                # Get log file ID
+                log_file_id = request.session['sync_connections'][str(connection_id)]['log_file_id']
+                log_file = LogFile.objects.get(id=log_file_id)
+                
+                # Mark sync as completed
+                log_file.status = 'completed'
+                log_file.save()
+                
+                # Remove from session
+                del request.session['sync_connections'][str(connection_id)]
+                request.session.modified = True
+                
+                messages.success(request, f"Real-time sync stopped for {connection.name}")
+                return redirect('log_analyzer:log_detail', log_id=log_file_id)
+            else:
+                messages.warning(request, f"No active sync found for {connection.name}")
+        except Exception as e:
+            messages.error(request, f"Error stopping sync: {str(e)}")
     
     return redirect('log_analyzer:external_connections')

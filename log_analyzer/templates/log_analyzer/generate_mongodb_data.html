@@ -1,0 +1,71 @@
+<!-- log_analyzer/templates/log_analyzer/generate_mongodb_data.html -->
+{% extends "base.html" %}
+
+{% block title %}Generate MongoDB Test Data - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0"><i class="fas fa-database me-2"></i>Generate MongoDB Test Data</h2>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">This tool will generate realistic web traffic log data and upload it to your MongoDB Atlas database.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="num_entries" class="form-label">Number of Entries</label>
+                            <input type="number" id="num_entries" name="num_entries" class="form-control" min="1" max="10000" value="1000">
+                            <div class="form-text">Number of log entries to generate (max 10,000)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="host" class="form-label">MongoDB Host</label>
+                            <input type="text" id="host" name="host" class="form-control" value="cluster0.pww30.mongodb.net">
+                            <div class="form-text">MongoDB Atlas cluster hostname</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" id="username" name="username" class="form-control" value="aobakwempatane67">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" id="password" name="password" class="form-control" value="Tecboy@1122">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="database" class="form-label">Database Name</label>
+                            <input type="text" id="database" name="database" class="form-control" value="Logs_Database">
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" id="clear_existing" name="clear_existing" class="form-check-input">
+                            <label for="clear_existing" class="form-check-label">Clear existing data</label>
+                            <div class="form-text">Warning: This will delete all existing data in the logs collection</div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <strong>Note:</strong> This process may take a few moments depending on the number of entries.
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'log_analyzer:external_connections' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-1"></i> Generate and Upload Data
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

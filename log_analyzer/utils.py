@@ -1,13 +1,13 @@
 import csv
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from io import StringIO
 import pandas as pd
 import numpy as np
 import random
 import time
 import logging
-
+from urllib.parse import quote_plus
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def parse_log_file(file_object):
         # Check if it's a CSV file (contains commas or has csv extension)
         if ',' in content.split('\n')[0] or (hasattr(file_object, 'name') and file_object.name.lower().endswith('.csv')):
             logger.info("Parsing as CSV file")
-            return parse_csv_file(content)
+            return parse_csv_file(content)  # Fixed from recursive call
         else:
             logger.info("Parsing as IIS log file")
             return parse_iis_log(content)
@@ -348,16 +348,6 @@ def generate_test_data(num_entries=1000):
     # Enrich with geographical and categorical data
     return enrich_log_data(entries)
 
-def save_test_data_to_csv(filename, num_entries=1000):
-    """Generate test data and save to CSV file"""
-    entries = generate_test_data(num_entries)
-    
-    df = pd.DataFrame(entries)
-    df.to_csv(filename, index=False)
-    
-    logger.info(f"Saved {num_entries} test entries to {filename}")
-    return filename
-
 def analyze_log_data(entries):
     """Perform basic analysis on log entries"""
     logger.info(f"Analyzing {len(entries)} log entries")
@@ -425,85 +415,6 @@ def analyze_log_data(entries):
             'by_day': {}
         }
 
-def process_log_file(log_id):
-    """Process a log file in the background
-    
-    In a production app, this would be a Celery task
-    """
-    from .models import LogFile, LogEntry
-    
-    logger.info(f"Processing log file with ID: {log_id}")
-    log_file = LogFile.objects.get(id=log_id)
-    
-    try:
-        # Update status to processing
-        log_file.status = 'processing'
-        log_file.save()
-        
-        # Open and parse the log file
-        log_file.file.open('rb')
-        logger.info(f"Opened file: {log_file.name}")
-        
-        entries = parse_log_file(log_file.file)
-        log_file.file.close()
-        
-        logger.info(f"Parsed {len(entries)} entries from file")
-        
-        # Enrich the data
-        enriched_entries = enrich_log_data(entries)
-        
-        # Update log file with total entries
-        log_file.total_entries = len(enriched_entries)
-        log_file.save()
-        
-        # Create LogEntry objects
-        for i, entry in enumerate(enriched_entries):
-            try:
-                LogEntry.objects.create(
-                    log_file=log_file,
-                    timestamp=entry['timestamp'],
-                    ip_address=entry['ip_address'],
-                    http_method=entry['http_method'],
-                    resource=entry['resource'],
-                    status_code=entry['status_code'],
-                    country=entry['country'],
-                    page_category=entry['page_category']
-                )
-                
-                # Log progress periodically
-                if i % 100 == 0:
-                    logger.info(f"Created {i+1}/{len(enriched_entries)} entries")
-                
-            except Exception as entry_error:
-                logger.error(f"Error creating entry {i+1}: {entry_error}")
-                continue
-                
-            # Update progress every 10 entries
-            if i % 10 == 0:
-                log_file.entries_processed = i + 1
-                log_file.save()
-                
-                # Simulate slower processing for demonstration
-                time.sleep(0.01)
-        
-        # Update status to completed
-        log_file.status = 'completed'
-        log_file.processed_at = datetime.now()
-        log_file.entries_processed = log_file.total_entries
-        log_file.save()
-        
-        logger.info(f"Successfully processed log file {log_id}")
-        
-    except Exception as e:
-        # Update status to failed
-        logger.error(f"Error processing log file {log_id}: {e}")
-        log_file.status = 'failed'
-        log_file.error_message = str(e)
-        log_file.save()
-        
-
-# log_analyzer updates for live data external connection
-
 def test_external_connection(connection):
     """Test connection to an external data source"""
     source_type = connection.source_type
@@ -570,6 +481,30 @@ def test_external_connection(connection):
             
             response = requests.get(connection.api_url, headers=headers)
             response.raise_for_status()
+            
+            return {'success': True}
+            
+        elif source_type == 'mongodb':
+            from pymongo.mongo_client import MongoClient
+            from pymongo.server_api import ServerApi
+            
+            # Construct the connection URI with properly escaped username and password
+            if connection.host.startswith('mongodb+'):
+                # Full connection string provided
+                uri = connection.host
+                # Replace password placeholder if needed
+                if '<db_password>' in uri:
+                    uri = uri.replace('<db_password>', quote_plus(connection.password))
+            else:
+                # Construct from parts with escaped username and password
+                uri = f"mongodb+srv://{quote_plus(connection.username)}:{quote_plus(connection.password)}@{connection.host}/{connection.database}"
+            
+            # Create a client with Server API version 1
+            client = MongoClient(uri, server_api=ServerApi('1'))
+            
+            # Test connection with ping
+            client.admin.command('ping')
+            client.close()
             
             return {'success': True}
             
@@ -667,6 +602,58 @@ def import_from_external_source(log_file_id, connection_id):
                 entries = data['data']
             else:
                 raise ValueError("Unexpected API response format")
+                
+        elif connection.source_type == 'mongodb':
+            from pymongo.mongo_client import MongoClient
+            from pymongo.server_api import ServerApi
+            
+            # Construct the connection URI with proper URL encoding
+            if connection.host.startswith('mongodb+'):
+                # Full connection string provided
+                uri = connection.host
+                # Replace password placeholder if needed
+                if '<db_password>' in uri:
+                    uri = uri.replace('<db_password>', quote_plus(connection.password))
+            else:
+                # Construct from parts with URL encoding
+                uri = f"mongodb+srv://{quote_plus(connection.username)}:{quote_plus(connection.password)}@{connection.host}/{connection.database}"
+            
+            # Create a client with Server API version 1
+            client = MongoClient(uri, server_api=ServerApi('1'))
+            
+            # Replace this with your actual collection and query
+            db = client[connection.database or 'logs']  # Use database name or default to 'logs'
+            collection = db['logs']  # Adjust collection name as needed
+            
+            cursor = collection.find().sort('timestamp', -1).limit(1000)
+            
+            for doc in cursor:
+                # Convert MongoDB _id to string and handle date fields
+                entry = {}
+                for key, value in doc.items():
+                    if key == '_id':
+                        # Store MongoDB ID for duplicate prevention
+                        entry['mongodb_id'] = str(value)
+                    elif isinstance(value, datetime):
+                        entry[key] = value
+                    else:
+                        entry[key] = value
+                
+                # Ensure required fields exist
+                if 'timestamp' not in entry:
+                    entry['timestamp'] = datetime.now()
+                if 'ip_address' not in entry:
+                    entry['ip_address'] = '127.0.0.1'
+                if 'http_method' not in entry:
+                    entry['http_method'] = 'GET'
+                if 'resource' not in entry:
+                    entry['resource'] = '/'
+                if 'status_code' not in entry:
+                    entry['status_code'] = 200
+                    
+                entries.append(entry)
+            
+            client.close()
         
         # Enrich and save the entries
         enriched_entries = enrich_log_data(entries)
@@ -675,7 +662,7 @@ def import_from_external_source(log_file_id, connection_id):
         log_file.save()
         
         for i, entry in enumerate(enriched_entries):
-            LogEntry.objects.create(
+            log_entry = LogEntry.objects.create(
                 log_file=log_file,
                 timestamp=entry['timestamp'],
                 ip_address=entry['ip_address'],
@@ -685,6 +672,11 @@ def import_from_external_source(log_file_id, connection_id):
                 country=entry.get('country', 'Unknown'),
                 page_category=entry.get('page_category', 'other')
             )
+            
+            # Store MongoDB ID if available
+            if 'mongodb_id' in entry and hasattr(log_entry, 'mongodb_id'):
+                log_entry.mongodb_id = entry['mongodb_id']
+                log_entry.save()
             
             if i % 10 == 0:
                 log_file.entries_processed = i + 1
@@ -699,3 +691,177 @@ def import_from_external_source(log_file_id, connection_id):
         log_file.status = 'failed'
         log_file.error_message = str(e)
         log_file.save()
+
+def sync_mongodb_data_realtime(connection_id, log_file_id=None, interval=1):
+    """
+    Continuously sync data from MongoDB in real-time
+    
+    Args:
+        connection_id: ID of the ExternalDataSource connection
+        log_file_id: Optional ID of an existing LogFile (creates new one if None)
+        interval: Sync interval in seconds (default: 1)
+    """
+    from .models import LogFile, LogEntry, ExternalDataSource
+    import time
+    from pymongo.mongo_client import MongoClient
+    from pymongo.server_api import ServerApi
+    import threading
+    from django.utils import timezone
+    
+    # Get or create log file
+    connection = ExternalDataSource.objects.get(id=connection_id)
+    if log_file_id:
+        log_file = LogFile.objects.get(id=log_file_id)
+    else:
+        log_file = LogFile.objects.create(
+            name=f"Real-time import from {connection.name} - {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+            uploaded_by=connection.created_by,
+            status='processing'
+        )
+    
+    # Track imported document IDs to prevent duplicates
+    imported_ids = set()
+    
+    # Track if sync is running
+    is_running = True
+    
+    def sync_worker():
+        nonlocal imported_ids, is_running
+        
+        try:
+            # Set up MongoDB connection
+            uri = f"mongodb+srv://{quote_plus(connection.username)}:{quote_plus(connection.password)}@{connection.host}/{connection.database}"
+            client = MongoClient(uri, server_api=ServerApi('1'))
+            db = client[connection.database or 'logs']
+            collection = db['logs']
+            
+            # Get timestamp of last imported entry or use current time as starting point
+            latest_entry = LogEntry.objects.filter(log_file=log_file).order_by('-timestamp').first()
+            last_timestamp = latest_entry.timestamp if latest_entry else timezone.now() - timedelta(hours=1)
+            
+            # Initial load of existing IDs to avoid duplicates
+            for entry in LogEntry.objects.filter(log_file=log_file):
+                if hasattr(entry, 'mongodb_id') and entry.mongodb_id:
+                    imported_ids.add(entry.mongodb_id)
+            
+            logger.info(f"Starting real-time sync from MongoDB. Tracking {len(imported_ids)} existing entries.")
+            
+            # Main sync loop
+            while is_running:
+                start_time = time.time()
+                
+                # Query for new documents added since last sync
+                query = {"timestamp": {"$gt": last_timestamp}}
+                cursor = collection.find(query).sort("timestamp", 1).limit(100)
+                
+                # Process new documents
+                new_entries = []
+                new_entries_count = 0
+                last_doc = None
+                
+                for doc in cursor:
+                    doc_id = str(doc['_id'])
+                    
+                    # Skip if already imported
+                    if doc_id in imported_ids:
+                        continue
+                    
+                    # Create entry from document
+                    entry = {}
+                    for key, value in doc.items():
+                        if key == '_id':
+                            # Store MongoDB ID for duplicate prevention
+                            entry['mongodb_id'] = doc_id
+                        elif isinstance(value, datetime):
+                            entry[key] = value
+                        else:
+                            entry[key] = value
+                    
+                    # Ensure required fields exist
+                    if 'timestamp' not in entry:
+                        entry['timestamp'] = timezone.now()
+                    if 'ip_address' not in entry:
+                        entry['ip_address'] = '127.0.0.1'
+                    if 'http_method' not in entry:
+                        entry['http_method'] = 'GET'
+                    if 'resource' not in entry:
+                        entry['resource'] = '/'
+                    if 'status_code' not in entry:
+                        entry['status_code'] = 200
+                    
+                    new_entries.append(entry)
+                    last_doc = doc
+                    new_entries_count += 1
+                
+                # Process new entries if any found
+                if new_entries:
+                    # Enrich data
+                    enriched_entries = enrich_log_data(new_entries)
+                    
+                    # Update log file stats
+                    current_count = LogEntry.objects.filter(log_file=log_file).count()
+                    log_file.total_entries = current_count + len(enriched_entries)
+                    log_file.save()
+                    
+                    # Save entries to database
+                    for i, entry in enumerate(enriched_entries):
+                        # Create log entry
+                        log_entry = LogEntry.objects.create(
+                            log_file=log_file,
+                            timestamp=entry['timestamp'],
+                            ip_address=entry['ip_address'],
+                            http_method=entry['http_method'],
+                            resource=entry['resource'],
+                            status_code=entry['status_code'],
+                            country=entry.get('country', 'Unknown'),
+                            page_category=entry.get('page_category', 'other')
+                        )
+                        
+                        # Store MongoDB ID as custom field for duplicate prevention
+                        if 'mongodb_id' in entry:
+                            # Add custom field to store MongoDB ID
+                            if hasattr(log_entry, 'mongodb_id'):
+                                log_entry.mongodb_id = entry['mongodb_id']
+                                log_entry.save()
+                            
+                            # Track ID to prevent future duplicates
+                            imported_ids.add(entry['mongodb_id'])
+                        
+                        # Update progress counter
+                        log_file.entries_processed = current_count + i + 1
+                        if i % 10 == 0:
+                            log_file.save()
+                    
+# Update last timestamp for next query
+                    if last_doc and 'timestamp' in last_doc:
+                        last_timestamp = last_doc['timestamp']
+                    
+                    logger.info(f"Imported {new_entries_count} new entries. Total: {log_file.entries_processed}")
+                
+                # Calculate time to sleep to maintain desired interval
+                elapsed = time.time() - start_time
+                sleep_time = max(0, interval - elapsed)
+                time.sleep(sleep_time)
+            
+            # Clean up
+            client.close()
+            
+        except Exception as e:
+            logger.error(f"Error in MongoDB real-time sync: {str(e)}")
+            log_file.status = 'failed'
+            log_file.error_message = str(e)
+            log_file.save()
+            is_running = False
+    
+    # Start sync in background thread
+    sync_thread = threading.Thread(target=sync_worker)
+    sync_thread.daemon = True
+    sync_thread.start()
+    
+    return {
+        'success': True,
+        'log_file_id': log_file.id,
+        'message': f"Real-time sync started with {connection.name}",
+        'thread': sync_thread,
+        'stop_sync': lambda: setattr(sync_thread, 'is_running', False)  # Function to stop the sync
+    }
