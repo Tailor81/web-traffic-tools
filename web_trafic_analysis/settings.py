@@ -8,14 +8,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-your-secret-key-here')
 
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True  # Set to True for local development
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
+    'localhost', 
+    '127.0.0.1', 
+    'web-traffic-tools.onrender.com'
 ]
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -67,15 +68,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'web_trafic_analysis.wsgi.application'
 
 # Database configuration
-
 if 'DATABASE_URL' in os.environ:
     DATABASES = {
         'default': dj_database_url.config(
             conn_max_age=600,
             conn_health_checks=True,
         )
-    }  # Note the added closing curly brace and correct indentation
-else:
+} else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
