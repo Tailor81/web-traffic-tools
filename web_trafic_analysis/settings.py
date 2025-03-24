@@ -67,6 +67,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'web_trafic_analysis.wsgi.application'
 
+
 # Database configuration
 if 'DATABASE_URL' in os.environ:
     DATABASES = {
@@ -74,7 +75,8 @@ if 'DATABASE_URL' in os.environ:
             conn_max_age=600,
             conn_health_checks=True,
         )
-} else:
+    }  # Note the added closing curly brace and correct indentation
+else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
