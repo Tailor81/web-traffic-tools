@@ -56,5 +56,5 @@ pytest-django
 
 
 
-
+setuptools
 pymongo

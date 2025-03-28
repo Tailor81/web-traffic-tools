@@ -8,8 +8,11 @@ from .models import ExternalDataSource, LogFile, LogEntry
 from .forms import ExternalDataSourceForm, LogFileUploadForm
 from .utils import (
     import_from_external_source, parse_log_file, enrich_log_data, generate_test_data, 
-    analyze_log_data, test_external_connection, sync_mongodb_data_realtime
+    analyze_log_data, test_external_connection, sync_mongodb_data_realtime, stop_mongodb_sync, running_syncs
 )
+
+
+
 
 import pandas as pd
 from io import StringIO, BytesIO
@@ -551,79 +554,118 @@ def mongodb_data_status(request):
     """View to display status after generating MongoDB data"""
     return render(request, 'log_analyzer/mongodb_data_status.html')
 
+
+
 @login_required
 def test_mongodb_connection(request):
-    """Simple view to directly test MongoDB connection"""
+    """Comprehensive MongoDB connection test with detailed error reporting"""
     if request.method == 'POST':
         try:
+            # Gather connection parameters
             host = request.POST.get('host', 'cluster0.pww30.mongodb.net')
             username = request.POST.get('username', 'aobakwempatane67')
             password = request.POST.get('password', 'Tecboy@1122')
             database = request.POST.get('database', 'Logs_Database')
             
-            # Escape username and password
+            # URL encode credentials
             username_encoded = quote_plus(username)
             password_encoded = quote_plus(password)
             
-            # Construct URI
-            uri = f"mongodb+srv://{username_encoded}:{password_encoded}@{host}/{database}"
+            # Construct full connection URI with additional parameters
+            uri = f"mongodb+srv://{username_encoded}:{password_encoded}@{host}/{database}?retryWrites=true&w=majority"
             
-            # Connect
-            client = MongoClient(uri, server_api=ServerApi('1'))
+            # Create SSL context
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
             
-            # Test connection
-            client.admin.command('ping')
+            # Verbose connection attempt
+            print(f"Attempting connection with URI: {uri}")
+            
+            # Create MongoDB client with extensive timeout and SSL options
+            client = MongoClient(
+                uri, 
+                server_api=ServerApi('1'),
+                ssl_context=ssl_context,
+                connectTimeoutMS=30000,   # 30 second connection timeout
+                socketTimeoutMS=30000,    # 30 second socket timeout
+                serverSelectionTimeoutMS=30000  # 30 second server selection timeout
+            )
+            
+            # Perform connection test
+            result = client.admin.command('ping')
+            print("MongoDB Ping Result:", result)
+            
+            # List available databases (for debugging)
+            print("Available Databases:", client.list_database_names())
+            
             client.close()
             
-            messages.success(request, "Successfully connected to MongoDB!")
+            messages.success(request, "✅ Successfully connected to MongoDB!")
             return redirect('log_analyzer:mongodb_data_status')
-            
+        
         except Exception as e:
-            messages.error(request, f"Error connecting to MongoDB: {str(e)}")
+            # Comprehensive error logging
+            error_details = {
+                'error_type': type(e).__name__,
+                'error_message': str(e),
+                'traceback': traceback.format_exc()
+            }
+            
+            # Log full error details
+            print("MongoDB Connection Error:")
+            print(f"Type: {error_details['error_type']}")
+            print(f"Message: {error_details['error_message']}")
+            print("Full Traceback:")
+            print(error_details['traceback'])
+            
+            messages.error(request, f"❌ Connection Error: {str(e)}")
     
-    # Display the form
     return render(request, 'log_analyzer/test_mongodb_connection.html')
+
 
 @login_required
 def start_realtime_sync(request, connection_id):
-    """Start real-time synchronization with MongoDB"""
+    """Start real-time sync"""
     connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
-    
-    if request.method == 'POST':
-        try:
-            # Check if sync is already running for this connection
-            if hasattr(request.session, 'sync_connections') and str(connection_id) in request.session.get('sync_connections', {}):
-                messages.warning(request, f"Real-time sync already running for {connection.name}")
-                return redirect('log_analyzer:log_list')
-            
-            # Start the sync
-            result = sync_mongodb_data_realtime(connection_id, interval=1)
-            
-            if result['success']:
-                # Store sync info in session
-                if not hasattr(request.session, 'sync_connections'):
-                    request.session['sync_connections'] = {}
-                
-                if not isinstance(request.session['sync_connections'], dict):
-                    request.session['sync_connections'] = {}
-                
-                request.session['sync_connections'][str(connection_id)] = {
-                    'log_file_id': result['log_file_id'],
-                    'started_at': timezone.now().isoformat()
-                }
-                request.session.modified = True
-                
-                messages.success(request, f"Real-time sync started with {connection.name}")
-                return redirect('log_analyzer:log_detail', log_id=result['log_file_id'])
-            else:
-                messages.error(request, f"Error starting sync: {result.get('error', 'Unknown error')}")
-        except Exception as e:
-            messages.error(request, f"Error starting real-time sync: {str(e)}")
-    
+
+    if running_syncs.get(connection_id, False):
+        messages.warning(request, f"Sync already running for {connection.name}")
+    else:
+        result = sync_mongodb_data_realtime(connection_id)
+        messages.success(request, f"Started real-time sync for {connection.name}")
+
     return redirect('log_analyzer:external_connections')
+
 
 @login_required
 def stop_realtime_sync(request, connection_id):
+    """Stop real-time sync"""
+    result = stop_mongodb_sync(connection_id)
+    if result['success']:
+        messages.success(request, result['message'])
+    else:
+        messages.warning(request, result['message'])
+
+    return redirect('log_analyzer:external_connections')
+
+
+
+
+@login_required
+def sync_status(request, connection_id):
+    """Check the current status of a sync for a specific connection."""
+    status = check_sync_status(connection_id)
+    return JsonResponse(status)
+    """Stops real-time sync for a given connection"""
+    if connection_id in running_syncs:
+        stop_mongodb_sync(connection_id)
+        messages.success(request, "Real-time sync stopped.")
+    else:
+        messages.warning(request, "No active sync found.")
+    
+    return redirect('log_analyzer:external_connections')
+
     """Stop real-time synchronization with MongoDB"""
     connection = get_object_or_404(ExternalDataSource, id=connection_id, created_by=request.user)
     

@@ -20,7 +20,7 @@ urlpatterns = [
     
     
     path('mongodb/generate/', views.generate_mongodb_data, name='generate_mongodb_data'),
-    path('mongodb/status/', views.mongodb_data_status, name='mongodb_data_status'),
+    path('connections/<int:connection_id>/sync-status/', views.sync_status, name='sync_status'),
     path('mongodb/test-connection/', views.test_mongodb_connection, name='test_mongodb_connection'),
 
 
@@ -28,4 +28,7 @@ urlpatterns = [
     # MongoDB real-time sync
     path('connections/<int:connection_id>/start-sync/', views.start_realtime_sync, name='start_realtime_sync'),
     path('connections/<int:connection_id>/stop-sync/', views.stop_realtime_sync, name='stop_realtime_sync'),
+    
+    
+
 ]

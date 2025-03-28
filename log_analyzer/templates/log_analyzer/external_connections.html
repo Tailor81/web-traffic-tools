@@ -91,22 +91,21 @@
                                                 
                                                 <!-- MongoDB Real-time Sync Buttons -->
                                                 {% if connection.source_type == 'mongodb' %}
-                                                    <div class="mt-2">
-                                                        {% if active_syncs and connection.id|stringformat:"s" in active_syncs %}
+                                                    <div class="mt-2" id="sync-container-{{ connection.id }}">
+                                                        {% if connection.id|stringformat:"s" in active_syncs %}
                                                             <!-- Sync is active -->
                                                             <div class="d-flex align-items-center">
-                                                                <span class="badge bg-success me-2">
+                                                                <span class="badge bg-success me-2 sync-status-badge" id="sync-status-badge-{{ connection.id }}">
                                                                     <i class="fas fa-sync fa-spin me-1"></i> Active Sync
                                                                 </span>
                                                                 
                                                                 <form method="post" action="{% url 'log_analyzer:stop_realtime_sync' connection.id %}" class="d-inline">
                                                                     {% csrf_token %}
-                                                                    <button type="submit" class="btn btn-sm btn-warning">
+                                                                    <button type="submit" class="btn btn-sm btn-warning stop-sync-btn">
                                                                         <i class="fas fa-stop-circle me-1"></i> Stop Sync
                                                                     </button>
                                                                 </form>
                                                                 
-                                                                <!-- Simplified to avoid using get_item filter -->
                                                                 <a href="{% url 'log_analyzer:log_list' %}" class="btn btn-sm btn-info ms-2">
                                                                     <i class="fas fa-chart-bar me-1"></i> View Logs
                                                                 </a>
@@ -115,7 +114,7 @@
                                                             <!-- No active sync -->
                                                             <form method="post" action="{% url 'log_analyzer:start_realtime_sync' connection.id %}" class="d-inline">
                                                                 {% csrf_token %}
-                                                                <button type="submit" class="btn btn-sm btn-primary">
+                                                                <button type="submit" class="btn btn-sm btn-primary start-sync-btn">
                                                                     <i class="fas fa-sync me-1"></i> Start Real-time Sync
                                                                 </button>
                                                             </form>
@@ -186,4 +185,38 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% for connection in connections %}
+        {% if connection.source_type == 'mongodb' and connection.id|stringformat:"s" in active_syncs %}
+            function updateSyncStatus_{{ connection.id }}() {
+                fetch('{% url 'log_analyzer:sync_status' connection.id %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'processing') {
+                            const progressBadge = document.getElementById('sync-status-badge-{{ connection.id }}');
+                            progressBadge.innerHTML = `
+                                <i class="fas fa-sync fa-spin me-1"></i> 
+                                Active Sync (${data.progress.toFixed(1)}%)
+                            `;
+                            setTimeout(updateSyncStatus_{{ connection.id }}, 2000);
+                        } else {
+                            // Reload the page or update UI to show sync stopped
+                            location.reload();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking sync status:', error);
+                        // Try again after a delay
+                        setTimeout(updateSyncStatus_{{ connection.id }}, 5000);
+                    });
+            }
+            updateSyncStatus_{{ connection.id }}();
+        {% endif %}
+    {% endfor %}
+});
+</script>
 {% endblock %}
