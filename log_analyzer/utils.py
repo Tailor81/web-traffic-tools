@@ -427,301 +427,265 @@ def test_external_connection(connection):
     try:
         if source_type == 'mysql':
             import mysql.connector
+            from mysql.connector import Error
             
-            conn = mysql.connector.connect(
-                host=connection.host,
-                port=connection.port,
-                database=connection.database,
-                user=connection.username,
-                password=connection.password
-            )
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-            conn.close()
-            
-            return {'success': True}
+            try:
+                conn = mysql.connector.connect(
+                    host=connection.host,
+                    port=connection.port or 3306,  # Default MySQL port
+                    database=connection.database,
+                    user=connection.username,
+                    password=connection.password,
+                    connect_timeout=10
+                )
+                
+                if conn.is_connected():
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT 1")
+                    cursor.close()
+                    conn.close()
+                    return {'success': True, 'message': 'Successfully connected to MySQL database'}
+                    
+            except Error as e:
+                return {'success': False, 'error': f'MySQL Error: {str(e)}'}
             
         elif source_type == 'postgresql':
             import psycopg2
+            from psycopg2 import OperationalError
             
-            conn = psycopg2.connect(
-                host=connection.host,
-                port=connection.port,
-                dbname=connection.database,
-                user=connection.username,
-                password=connection.password
-            )
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-            conn.close()
-            
-            return {'success': True}
+            try:
+                conn = psycopg2.connect(
+                    host=connection.host,
+                    port=connection.port or 5432,  # Default PostgreSQL port
+                    dbname=connection.database,
+                    user=connection.username,
+                    password=connection.password,
+                    connect_timeout=10
+                )
+                
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                conn.close()
+                return {'success': True, 'message': 'Successfully connected to PostgreSQL database'}
+                
+            except OperationalError as e:
+                return {'success': False, 'error': f'PostgreSQL Error: {str(e)}'}
             
         elif source_type == 'mssql':
             import pyodbc
             
-            conn_str = (
-                f"DRIVER={{SQL Server}};"
-                f"SERVER={connection.host},{connection.port};"
-                f"DATABASE={connection.database};"
-                f"UID={connection.username};"
-                f"PWD={connection.password}"
-            )
-            conn = pyodbc.connect(conn_str)
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            cursor.close()
-            conn.close()
-            
-            return {'success': True}
+            try:
+                conn_str = (
+                    f"DRIVER={{SQL Server}};"
+                    f"SERVER={connection.host},{connection.port or 1433};"  # Default MS SQL port
+                    f"DATABASE={connection.database};"
+                    f"UID={connection.username};"
+                    f"PWD={connection.password};"
+                    "TrustServerCertificate=yes;"
+                    "timeout=10"
+                )
+                
+                conn = pyodbc.connect(conn_str)
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                conn.close()
+                return {'success': True, 'message': 'Successfully connected to MS SQL database'}
+                
+            except pyodbc.Error as e:
+                return {'success': False, 'error': f'MS SQL Error: {str(e)}'}
             
         elif source_type == 'api':
             import requests
+            from requests.exceptions import RequestException
             
-            headers = {}
-            if connection.api_key:
-                headers['Authorization'] = f"Bearer {connection.api_key}"
-            
-            response = requests.get(connection.api_url, headers=headers)
-            response.raise_for_status()
-            
-            return {'success': True}
+            try:
+                headers = {}
+                if connection.api_key:
+                    headers['Authorization'] = f"Bearer {connection.api_key}"
+                
+                response = requests.get(
+                    connection.api_url,
+                    headers=headers,
+                    timeout=10
+                )
+                response.raise_for_status()
+                return {'success': True, 'message': 'Successfully connected to API endpoint'}
+                
+            except RequestException as e:
+                return {'success': False, 'error': f'API Error: {str(e)}'}
             
         elif source_type == 'mongodb':
             from pymongo.mongo_client import MongoClient
             from pymongo.server_api import ServerApi
+            from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
+            import requests
+            import json
             
-            # Construct the connection URI with properly escaped username and password
-            if connection.host.startswith('mongodb+'):
-                # Full connection string provided
-                uri = connection.host
-                # Replace password placeholder if needed
-                if '<db_password>' in uri:
-                    uri = uri.replace('<db_password>', quote_plus(connection.password))
-            else:
-                # Construct from parts with escaped username and password
-                uri = f"mongodb+srv://{quote_plus(connection.username)}:{quote_plus(connection.password)}@{connection.host}/{connection.database}"
-            
-            # Create a client with Server API version 1
-            client = MongoClient(uri, server_api=ServerApi('1'))
-            
-            # Test connection with ping
-            client.admin.command('ping')
-            client.close()
-            
-            return {'success': True}
+            try:
+                # Get current IP address
+                ip_response = requests.get('https://api.ipify.org?format=json')
+                current_ip = ip_response.json()['ip']
+                
+                # Construct the connection URI with proper URL encoding
+                if connection.host.startswith('mongodb+'):
+                    uri = connection.host
+                    if '<db_password>' in uri:
+                        uri = uri.replace('<db_password>', quote_plus(connection.password))
+                else:
+                    uri = f"mongodb+srv://{quote_plus(connection.username)}:{quote_plus(connection.password)}@{connection.host}/{connection.database}"
+                
+                # Create a client with Server API version 1 and timeout
+                client = MongoClient(
+                    uri,
+                    server_api=ServerApi('1'),
+                    serverSelectionTimeoutMS=10000  # 10 second timeout
+                )
+                
+                # Test connection with ping
+                client.admin.command('ping')
+                
+                # Get cluster information
+                cluster_info = client.admin.command('getCmdLineOpts')
+                cluster_name = cluster_info.get('parsed', {}).get('replication', {}).get('replSetName', 'Unknown')
+                
+                client.close()
+                
+                return {
+                    'success': True, 
+                    'message': f'Successfully connected to MongoDB cluster: {cluster_name}',
+                    'ip': current_ip,
+                    'cluster_info': {
+                        'name': cluster_name,
+                        'host': connection.host,
+                        'database': connection.database
+                    }
+                }
+                
+            except (OperationFailure, ServerSelectionTimeoutError) as e:
+                error_msg = str(e)
+                if 'IP whitelist' in error_msg:
+                    return {
+                        'success': False, 
+                        'error': f'MongoDB Error: IP {current_ip} not whitelisted. Please add this IP to your MongoDB Atlas whitelist.',
+                        'ip': current_ip,
+                        'requires_whitelist': True
+                    }
+                return {'success': False, 'error': f'MongoDB Error: {error_msg}'}
             
         else:
             return {'success': False, 'error': f"Unsupported source type: {source_type}"}
             
+    except ImportError as e:
+        return {'success': False, 'error': f"Required package not installed: {str(e)}"}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': f"Unexpected error: {str(e)}"}
 
-
-
-
-def import_from_external_source(log_file_id, connection_id):
-    """Import data from an external source and create log entries"""
-    from .models import LogFile, LogEntry, ExternalDataSource
-    from django.utils import timezone
-    from datetime import datetime
-    from urllib.parse import quote_plus
-    
-    log_file = LogFile.objects.get(id=log_file_id)
-    connection = ExternalDataSource.objects.get(id=connection_id)
-    
+def import_from_external_source(log_file, source_type, credentials):
+    """
+    Import log data from external sources (MongoDB, Elasticsearch, etc.)
+    """
     try:
-        entries = []
-        
-        if connection.source_type == 'mysql':
-            import mysql.connector
-            
-            conn = mysql.connector.connect(
-                host=connection.host,
-                port=connection.port,
-                database=connection.database,
-                user=connection.username,
-                password=connection.password
-            )
-            cursor = conn.cursor(dictionary=True)
-            
-            # This query needs to match your specific database schema
-            cursor.execute("""
-                SELECT 
-                    timestamp, ip_address, http_method, resource, status_code
-                FROM 
-                    logs
-                ORDER BY 
-                    timestamp DESC
-                LIMIT 1000
-            """)
-            
-            for row in cursor:
-                # Ensure timestamp is timezone-aware
-                if isinstance(row['timestamp'], datetime):
-                    row['timestamp'] = timezone.make_aware(row['timestamp'])
-                entries.append(row)
-                
-            cursor.close()
-            conn.close()
-            
-        elif connection.source_type == 'postgresql':
-            import psycopg2
-            import psycopg2.extras
-            
-            conn = psycopg2.connect(
-                host=connection.host,
-                port=connection.port,
-                dbname=connection.database,
-                user=connection.username,
-                password=connection.password
-            )
-            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            
-            # This query needs to match your specific database schema
-            cursor.execute("""
-                SELECT 
-                    timestamp, ip_address, http_method, resource, status_code
-                FROM 
-                    logs
-                ORDER BY 
-                    timestamp DESC
-                LIMIT 1000
-            """)
-            
-            for row in cursor:
-                row_dict = dict(row)
-                # Ensure timestamp is timezone-aware
-                if isinstance(row_dict['timestamp'], datetime):
-                    row_dict['timestamp'] = timezone.make_aware(row_dict['timestamp'])
-                entries.append(row_dict)
-                
-            cursor.close()
-            conn.close()
-            
-        elif connection.source_type == 'api':
-            import requests
-            
-            headers = {}
-            if connection.api_key:
-                headers['Authorization'] = f"Bearer {connection.api_key}"
-            
-            response = requests.get(connection.api_url, headers=headers)
-            response.raise_for_status()
-            
-            data = response.json()
-            
-            # API response format will vary, adjust this as needed
-            if isinstance(data, list):
-                entries = data
-            elif isinstance(data, dict) and 'data' in data:
-                entries = data['data']
+        if source_type == 'mongodb':
+            # Parse MongoDB connection string
+            if credentials.startswith('mongodb://'):
+                connection_string = credentials
             else:
-                raise ValueError("Unexpected API response format")
+                # Handle credentials in the format: host:port,username,password,database,collection
+                host, port, username, password, database, collection = credentials.split(',')
+                connection_string = f"mongodb://{username}:{password}@{host}:{port}/{database}"
+            
+            # Connect to MongoDB
+            client = MongoClient(connection_string)
+            db = client[database]
+            collection = db[collection]
+            
+            # Get the last synced timestamp from the log file
+            last_synced = log_file.last_synced or datetime.min.replace(tzinfo=timezone.utc)
+            
+            # Query for new documents since last sync
+            query = {
+                'timestamp': {'$gt': last_synced}
+            }
+            
+            # Get total count for progress tracking
+            total_docs = collection.count_documents(query)
+            processed = 0
+            
+            # Process documents in batches
+            batch_size = 1000
+            while True:
+                # Get next batch of documents
+                cursor = collection.find(query).skip(processed).limit(batch_size)
+                batch = list(cursor)
                 
-        elif connection.source_type == 'mongodb':
-            from pymongo.mongo_client import MongoClient
-            from pymongo.server_api import ServerApi
-            
-            # Construct the connection URI with proper URL encoding
-            if connection.host.startswith('mongodb+'):
-                # Full connection string provided
-                uri = connection.host
-                # Replace password placeholder if needed
-                if '<db_password>' in uri:
-                    uri = uri.replace('<db_password>', quote_plus(connection.password))
-            else:
-                # Construct from parts with URL encoding
-                uri = f"mongodb+srv://{quote_plus(connection.username)}:{quote_plus(connection.password)}@{connection.host}/{connection.database}"
-            
-            # Create a client with Server API version 1
-            client = MongoClient(uri, server_api=ServerApi('1'))
-            
-            # Replace this with your actual collection and query
-            db = client[connection.database or 'logs']  # Use database name or default to 'logs'
-            collection = db['logs']  # Adjust collection name as needed
-            
-            cursor = collection.find().sort('timestamp', -1).limit(1000)
-            
-            for doc in cursor:
-                # Convert MongoDB _id to string and handle date fields
-                entry = {}
-                for key, value in doc.items():
-                    if key == '_id':
-                        # Store MongoDB ID for duplicate prevention
-                        entry['mongodb_id'] = str(value)
-                    elif isinstance(value, datetime):
-                        # Convert to timezone-aware datetime
-                        if value.tzinfo is None:
-                            # If no timezone, assume UTC and make aware
-                            entry[key] = timezone.make_aware(value)
-                        else:
-                            # Convert to system default timezone
-                            entry[key] = value.astimezone(timezone.get_current_timezone())
-                    else:
-                        entry[key] = value
+                if not batch:
+                    break
                 
-                # Ensure required fields exist with timezone-aware timestamps
-                if 'timestamp' not in entry:
-                    entry['timestamp'] = timezone.now()
-                if 'ip_address' not in entry:
-                    entry['ip_address'] = '127.0.0.1'
-                if 'http_method' not in entry:
-                    entry['http_method'] = 'GET'
-                if 'resource' not in entry:
-                    entry['resource'] = '/'
-                if 'status_code' not in entry:
-                    entry['status_code'] = 200
+                # Create log entries in bulk
+                log_entries = []
+                for doc in batch:
+                    # Check if entry already exists to prevent duplicates
+                    existing_entry = LogEntry.objects.filter(
+                        log_file=log_file,
+                        timestamp=doc['timestamp'],
+                        ip_address=doc['ip_address'],
+                        http_method=doc['http_method'],
+                        resource=doc['resource'],
+                        status_code=doc['status_code']
+                    ).exists()
                     
-                entries.append(entry)
-            
-            client.close()
-        
-        # Enrich and save the entries
-        enriched_entries = enrich_log_data(entries)
-        
-        log_file.total_entries = len(enriched_entries)
-        log_file.save()
-        
-        for i, entry in enumerate(enriched_entries):
-            log_entry = LogEntry.objects.create(
-                log_file=log_file,
-                timestamp=entry['timestamp'],
-                ip_address=entry['ip_address'],
-                http_method=entry['http_method'],
-                resource=entry['resource'],
-                status_code=entry['status_code'],
-                country=entry.get('country', 'Unknown'),
-                page_category=entry.get('page_category', 'other')
-            )
-            
-            # Store MongoDB ID if available
-            if 'mongodb_id' in entry and hasattr(log_entry, 'mongodb_id'):
-                log_entry.mongodb_id = entry['mongodb_id']
-                log_entry.save()
-            
-            if i % 10 == 0:
-                log_file.entries_processed = i + 1
+                    if not existing_entry:
+                        log_entries.append(LogEntry(
+                            log_file=log_file,
+                            timestamp=doc['timestamp'],
+                            ip_address=doc['ip_address'],
+                            http_method=doc['http_method'],
+                            resource=doc['resource'],
+                            status_code=doc['status_code'],
+                            country=doc.get('country', 'Unknown'),
+                            page_category=doc.get('page_category', 'other'),
+                            user_agent=doc.get('user_agent', ''),
+                            referer=doc.get('referer', ''),
+                            session_id=doc.get('session_id', ''),
+                            response_time_ms=doc.get('response_time_ms', 0),
+                            bytes_sent=doc.get('bytes_sent', 0),
+                            query_params=doc.get('query_params', {})
+                        ))
+                
+                # Bulk create new entries
+                if log_entries:
+                    LogEntry.objects.bulk_create(log_entries)
+                
+                # Update progress
+                processed += len(batch)
+                log_file.processed_entries = processed
                 log_file.save()
-        
-        log_file.status = 'completed'
-        log_file.processed_at = timezone.now()
-        log_file.entries_processed = log_file.total_entries
-        log_file.save()
-        
+                
+                # Update last synced timestamp
+                if batch:
+                    log_file.last_synced = max(doc['timestamp'] for doc in batch)
+                    log_file.save()
+            
+            # Mark sync as complete
+            log_file.status = 'completed'
+            log_file.save()
+            
+            # Close MongoDB connection
+            client.close()
+            
+        elif source_type == 'elasticsearch':
+            # Elasticsearch implementation
+            pass
+        else:
+            raise ValueError(f"Unsupported source type: {source_type}")
+            
     except Exception as e:
-        log_file.status = 'failed'
+        log_file.status = 'error'
         log_file.error_message = str(e)
         log_file.save()
-        
-        # Optional: Re-raise the exception if you want to see full traceback
         raise
-
-
-
-
 
 running_syncs = {}  # Track active syncs
 

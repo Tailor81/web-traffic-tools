@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Test MongoDB Connection - Web Traffic Analysis{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="h3">Test MongoDB Connection</h1>
+            <p class="text-muted">Test your MongoDB Atlas connection and check IP whitelist requirements.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-0">Connection Details</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="host" class="form-label">Cluster Host</label>
+                            <input type="text" class="form-control" id="host" name="host" required
+                                   placeholder="e.g., cluster0.xxxxx.mongodb.net">
+                            <div class="form-text">Your MongoDB Atlas cluster hostname</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <div class="form-text">Your MongoDB Atlas database user</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="form-text">Your MongoDB Atlas database password</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="database" class="form-label">Database Name</label>
+                            <input type="text" class="form-control" id="database" name="database" required>
+                            <div class="form-text">The name of your database</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-vial me-1"></i> Test Connection
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-0">IP Whitelist Information</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h3 class="h6 mb-2">Current IP Address</h3>
+                        <p class="mb-0" id="current-ip">Checking...</p>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <h3 class="h6 mb-2">Important</h3>
+                        <p class="mb-0">MongoDB Atlas requires your IP address to be whitelisted for security. When you test the connection, we'll show you your current IP address that needs to be added to your MongoDB Atlas whitelist.</p>
+                    </div>
+                    
+                    <div class="alert alert-light">
+                        <h3 class="h6 mb-2">How to Whitelist Your IP</h3>
+                        <ol class="mb-0 small">
+                            <li>Log in to MongoDB Atlas</li>
+                            <li>Go to Network Access</li>
+                            <li>Click "Add IP Address"</li>
+                            <li>Add your current IP address</li>
+                            <li>Click "Confirm"</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get current IP address
+    fetch('https://api.ipify.org?format=json')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('current-ip').textContent = data.ip;
+        })
+        .catch(error => {
+            document.getElementById('current-ip').textContent = 'Unable to fetch IP address';
+        });
+});
+</script>
+{% endblock %} 

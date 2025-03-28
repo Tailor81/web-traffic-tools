@@ -254,6 +254,11 @@ def conversion_data_api(request):
     conversion_query = query.filter(resource__iregex=r'scheduledemo\.php|contact\.php|virtual-assistant\.php')
     converting_visitors = conversion_query.values('ip_address').distinct().count()
     
+    # Calculate conversion rate with proper handling of edge cases
+    conversion_rate = 0.0
+    if total_visitors > 0:
+        conversion_rate = (converting_visitors / total_visitors) * 100
+    
     # Conversion by page
     conversion_by_page = []
     for resource in conversion_resources:
@@ -266,8 +271,8 @@ def conversion_data_api(request):
     # Conversion by country
     conversion_by_country = (
         conversion_query.values('country')
-        .annotate(count=Count('id'))
-        .order_by('-count')
+        .annotate(conversions=Count('id'))
+        .order_by('-conversions')
     )
     
     # Conversion by date
@@ -308,7 +313,7 @@ def conversion_data_api(request):
     return JsonResponse({
         'total_visitors': total_visitors,
         'converting_visitors': converting_visitors,
-        'conversion_rate': (converting_visitors / total_visitors) * 100 if total_visitors > 0 else 0,
+        'conversion_rate': conversion_rate,
         'conversion_by_page': conversion_by_page,
         'conversion_by_country': list(conversion_by_country),
         'conversion_by_date': conversion_by_date,
