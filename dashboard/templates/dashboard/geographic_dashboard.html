@@ -27,10 +27,29 @@
         margin-bottom: 20px;
         width: 100%;
     }
+
+    .real-time-indicator {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background-color: #28a745;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        display: none;
+    }
+
+    .real-time-indicator.active {
+        display: block;
+    }
 </style>
 {% endblock %}
 
 {% block dashboard_content %}
+<div class="real-time-indicator" id="real-time-indicator">Real-time Updates Active</div>
+
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-md-6 mb-3">
@@ -63,8 +82,8 @@
     <div class="row">
         <div class="col-12">
             <div class="chart-container">
-                <h5>Traffic by Country - World Map</h5>
-                <div id="world-map-chart" style="height: 600px;"></div>
+                <h5>Traffic Distribution Map</h5>
+                <div id="countries-map" style="height: 500px;"></div>
             </div>
         </div>
     </div>
@@ -72,7 +91,7 @@
     <div class="row">
         <div class="col-12">
             <div class="chart-container">
-                <h5>Page Categories by Country</h5>
+                <h5>Traffic by Country and Page Category</h5>
                 <div id="country-category-heatmap" style="height: 500px;"></div>
             </div>
         </div>
@@ -84,8 +103,16 @@
 {{ block.super }}
 <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
 <script>
+    let updateInterval;
+    let isRealTimeEnabled = true;
+
+    // Function to format numbers with commas
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    
     // Fetch data and update charts
-    function updateGeoGraphicDashboard() {
+    function updateDashboard() {
         const dateRange = document.getElementById('geo-date-range-select').value;
         const logFile = document.getElementById('geo-log-file-select').value;
         
@@ -94,15 +121,12 @@
             .then(data => {
                 // Update log file dropdown
                 const logFileSelect = document.getElementById('geo-log-file-select');
-                // Save current selection
                 const currentSelection = logFileSelect.value;
                 
-                // Clear options except "All Log Files"
                 while (logFileSelect.options.length > 1) {
                     logFileSelect.remove(1);
                 }
                 
-                // Add log files
                 data.log_files.forEach(file => {
                     const option = document.createElement('option');
                     option.value = file.id;
@@ -110,112 +134,102 @@
                     logFileSelect.appendChild(option);
                 });
                 
-                // Restore selection if possible
-                if (Array.from(logFileSelect.options).some(opt => opt.value === currentSelection)) {
+                if (logFileSelect.querySelector(`option[value="${currentSelection}"]`)) {
                     logFileSelect.value = currentSelection;
                 }
                 
-                // Country bar chart - top 10 countries
-                const topCountries = data.country_counts.slice(0, 10);
-                
-                Plotly.newPlot('countries-bar-chart', [{
-                    y: topCountries.map(item => item.country),
-                    x: topCountries.map(item => item.count),
-                    type: 'bar',
-                    orientation: 'h',
-                    marker: {
-                        color: '#0d6efd',
-                        colorscale: 'Blues'
-                    }
-                }], {
-                    margin: {l: 120, r: 20, t: 10, b: 40},
-                    xaxis: {title: 'Number of Visits'},
-                    yaxis: {title: ''}
-                });
-                
-                // World map chart
-                let mapData = [{
-                    type: 'choropleth',
-                    locationmode: 'country names',
-                    locations: data.country_counts.map(item => item.country),
-                    z: data.country_counts.map(item => item.count),
-                    text: data.country_counts.map(item => item.country),
-                    colorscale: 'Blues',
-                    colorbar: {
-                        title: 'Visits',
-                        thickness: 20
-                    },
-                    marker: {
-                        line: {
-                            color: 'rgb(180,180,180)',
-                            width: 0.5
+                // Update country bar chart with smooth transitions
+                if (data.country_counts && data.country_counts.length > 0) {
+                    const topCountries = data.country_counts.slice(0, 10);
+                    Plotly.react('countries-bar-chart', [{
+                        y: topCountries.map(c => c.country),
+                        x: topCountries.map(c => c.count),
+                        type: 'bar',
+                        orientation: 'h',
+                        marker: {
+                            color: topCountries.map(c => c.count),
+                            colorscale: 'Blues'
                         }
-                    }
-                }];
+                    }], {
+                        margin: {l: 150, r: 20, t: 40, b: 20},
+                        xaxis: {title: 'Visits'},
+                        yaxis: {title: 'Country'}
+                    });
+                }
                 
-                Plotly.newPlot('world-map-chart', mapData, {
-                    geo: {
-                        showframe: false,
-                        showcoastlines: true,
-                        projection: {
-                            type: 'natural earth'
+                // Update country map with smooth transitions
+                if (data.country_counts && data.country_counts.length > 0) {
+                    Plotly.react('countries-map', [{
+                        type: 'choropleth',
+                        locations: data.country_counts.map(c => c.country),
+                        z: data.country_counts.map(c => c.count),
+                        locationmode: 'country names',
+                        colorscale: 'Blues',
+                        colorbar: {
+                            title: 'Visits'
                         }
-                    },
-                    margin: {l: 0, r: 0, t: 0, b: 0}
-                });
+                    }], {
+                        margin: {l: 0, r: 0, t: 40, b: 0},
+                        geo: {
+                            showframe: false,
+                            showcoastlines: true,
+                            projection: {
+                                type: 'natural earth'
+                            }
+                        }
+                    });
+                }
                 
-                // Country-category heatmap
+                // Update country-category heatmap with smooth transitions
                 if (data.country_category_data && data.country_category_data.length > 0) {
-                    // Get unique countries and categories
-                    const countries = [...new Set(data.country_category_data.map(item => item.country))];
-                    const categories = [...new Set(data.country_category_data.map(item => item.category))];
+                    const heatmapData = data.country_category_data;
+                    const countries = [...new Set(heatmapData.map(d => d.country))];
+                    const categories = [...new Set(heatmapData.map(d => d.category))];
                     
-                    // Create a 2D array for the heatmap data
-                    let zValues = [];
-                    for (let country of countries) {
-                        let countryRow = [];
-                        for (let category of categories) {
-                            const found = data.country_category_data.find(
-                                item => item.country === country && item.category === category
+                    const zValues = countries.map(country => 
+                        categories.map(category => {
+                            const entry = heatmapData.find(d => 
+                                d.country === country && d.category === category
                             );
-                            countryRow.push(found ? found.count : 0);
-                        }
-                        zValues.push(countryRow);
-                    }
+                            return entry ? entry.count : 0;
+                        })
+                    );
                     
-                    Plotly.newPlot('country-category-heatmap', [{
-                        z: zValues,
+                    Plotly.react('country-category-heatmap', [{
+                        type: 'heatmap',
                         x: categories,
                         y: countries,
-                        type: 'heatmap',
-                        colorscale: 'Blues'
+                        z: zValues,
+                        colorscale: 'Blues',
+                        colorbar: {
+                            title: 'Visits'
+                        }
                     }], {
-                        margin: {l: 120, r: 20, t: 10, b: 120},
+                        margin: {l: 150, r: 20, t: 40, b: 20},
                         xaxis: {title: 'Page Category'},
                         yaxis: {title: 'Country'}
                     });
-                } else {
-                    // Show "No data" message in the heatmap div
-                    document.getElementById('country-category-heatmap').innerHTML = 
-                        '<div class="text-center p-5"><h4 class="text-muted">No category data available</h4></div>';
                 }
             })
             .catch(error => {
                 console.error('Error fetching geographic data:', error);
-                alert('Error loading dashboard data. Please try again.');
             });
     }
     
     // Initial load
     document.addEventListener('DOMContentLoaded', function() {
-        updateGeoGraphicDashboard();
+        updateDashboard();
         
         // Add event listeners for filters
-        document.getElementById('geo-date-range-select').addEventListener('change', updateGeoGraphicDashboard);
-        document.getElementById('geo-log-file-select').addEventListener('change', updateGeoGraphicDashboard);
+        document.getElementById('geo-date-range-select').addEventListener('change', updateDashboard);
+        document.getElementById('geo-log-file-select').addEventListener('change', updateDashboard);
         
-        // Refresh data every 5 minutes
-        setInterval(updateGeoGraphicDashboard, 5 * 60 * 1000);
+        // Start real-time updates
+        updateInterval = setInterval(updateDashboard, 2000);
+        
+        // Show real-time indicator
+        const indicator = document.getElementById('real-time-indicator');
+        indicator.classList.add('active');
     });
 </script>
 {% endblock %}

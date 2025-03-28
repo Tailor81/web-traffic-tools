@@ -92,33 +92,29 @@
                                                 <!-- MongoDB Real-time Sync Buttons -->
                                                 {% if connection.source_type == 'mongodb' %}
                                                     <div class="mt-2" id="sync-container-{{ connection.id }}">
-                                                        {% if connection.id|stringformat:"s" in active_syncs %}
-                                                            <!-- Sync is active -->
-                                                            <div class="d-flex align-items-center">
-                                                                <span class="badge bg-success me-2 sync-status-badge" id="sync-status-badge-{{ connection.id }}">
-                                                                    <i class="fas fa-sync fa-spin me-1"></i> Active Sync
-                                                                </span>
-                                                                
-                                                                <form method="post" action="{% url 'log_analyzer:stop_realtime_sync' connection.id %}" class="d-inline">
-                                                                    {% csrf_token %}
-                                                                    <button type="submit" class="btn btn-sm btn-warning stop-sync-btn">
-                                                                        <i class="fas fa-stop-circle me-1"></i> Stop Sync
-                                                                    </button>
-                                                                </form>
-                                                                
-                                                                <a href="{% url 'log_analyzer:log_list' %}" class="btn btn-sm btn-info ms-2">
-                                                                    <i class="fas fa-chart-bar me-1"></i> View Logs
-                                                                </a>
-                                                            </div>
-                                                        {% else %}
-                                                            <!-- No active sync -->
-                                                            <form method="post" action="{% url 'log_analyzer:start_realtime_sync' connection.id %}" class="d-inline">
+                                                        <div class="d-flex align-items-center">
+                                                            <span class="badge me-2 sync-status-badge" id="sync-status-badge-{{ connection.id }}">
+                                                                <i class="fas fa-sync me-1"></i> Not Syncing
+                                                            </span>
+                                                            
+                                                            <form method="post" action="{% url 'log_analyzer:start_realtime_sync' connection.id %}" class="d-inline" id="start-sync-form-{{ connection.id }}">
                                                                 {% csrf_token %}
-                                                                <button type="submit" class="btn btn-sm btn-primary start-sync-btn">
-                                                                    <i class="fas fa-sync me-1"></i> Start Real-time Sync
+                                                                <button type="submit" class="btn btn-sm btn-success start-sync-btn">
+                                                                    <i class="fas fa-sync me-1"></i> Start Sync
                                                                 </button>
                                                             </form>
-                                                        {% endif %}
+                                                            
+                                                            <form method="post" action="{% url 'log_analyzer:stop_realtime_sync' connection.id %}" class="d-inline" id="stop-sync-form-{{ connection.id }}" style="display: none;">
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="btn btn-sm btn-danger stop-sync-btn">
+                                                                    <i class="fas fa-stop-circle me-1"></i> Stop Sync
+                                                                </button>
+                                                            </form>
+                                                            
+                                                            <a href="{% url 'log_analyzer:log_list' %}" class="btn btn-sm btn-info ms-2" id="view-logs-{{ connection.id }}" style="display: none;">
+                                                                <i class="fas fa-chart-bar me-1"></i> View Logs
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                 {% endif %}
                                             </td>
@@ -191,26 +187,59 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     {% for connection in connections %}
-        {% if connection.source_type == 'mongodb' and connection.id|stringformat:"s" in active_syncs %}
+        {% if connection.source_type == 'mongodb' %}
             function updateSyncStatus_{{ connection.id }}() {
                 fetch('{% url 'log_analyzer:sync_status' connection.id %}')
                     .then(response => response.json())
                     .then(data => {
+                        const statusBadge = document.getElementById('sync-status-badge-{{ connection.id }}');
+                        const startForm = document.getElementById('start-sync-form-{{ connection.id }}');
+                        const stopForm = document.getElementById('stop-sync-form-{{ connection.id }}');
+                        const viewLogs = document.getElementById('view-logs-{{ connection.id }}');
+                        
                         if (data.status === 'processing') {
-                            const progressBadge = document.getElementById('sync-status-badge-{{ connection.id }}');
-                            progressBadge.innerHTML = `
+                            statusBadge.innerHTML = `
                                 <i class="fas fa-sync fa-spin me-1"></i> 
-                                Active Sync (${data.progress.toFixed(1)}%)
+                                Syncing (${data.progress.toFixed(1)}%)
                             `;
+                            statusBadge.className = 'badge bg-warning me-2 sync-status-badge';
+                            startForm.style.display = 'none';
+                            stopForm.style.display = 'inline-block';
+                            viewLogs.style.display = 'inline-block';
                             setTimeout(updateSyncStatus_{{ connection.id }}, 2000);
+                        } else if (data.status === 'completed') {
+                            statusBadge.innerHTML = `
+                                <i class="fas fa-check-circle me-1"></i> 
+                                Sync Completed
+                            `;
+                            statusBadge.className = 'badge bg-success me-2 sync-status-badge';
+                            startForm.style.display = 'inline-block';
+                            stopForm.style.display = 'none';
+                            viewLogs.style.display = 'inline-block';
+                            setTimeout(() => location.reload(), 3000);
+                        } else if (data.status === 'stopped') {
+                            statusBadge.innerHTML = `
+                                <i class="fas fa-exclamation-circle me-1"></i> 
+                                Sync Stopped
+                            `;
+                            statusBadge.className = 'badge bg-secondary me-2 sync-status-badge';
+                            startForm.style.display = 'inline-block';
+                            stopForm.style.display = 'none';
+                            viewLogs.style.display = 'inline-block';
+                            setTimeout(() => location.reload(), 3000);
                         } else {
-                            // Reload the page or update UI to show sync stopped
-                            location.reload();
+                            statusBadge.innerHTML = `
+                                <i class="fas fa-sync me-1"></i> 
+                                Not Syncing
+                            `;
+                            statusBadge.className = 'badge bg-secondary me-2 sync-status-badge';
+                            startForm.style.display = 'inline-block';
+                            stopForm.style.display = 'none';
+                            viewLogs.style.display = 'none';
                         }
                     })
                     .catch(error => {
                         console.error('Error checking sync status:', error);
-                        // Try again after a delay
                         setTimeout(updateSyncStatus_{{ connection.id }}, 5000);
                     });
             }
