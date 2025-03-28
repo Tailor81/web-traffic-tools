@@ -112,7 +112,16 @@
 <!-- Call to Action -->
 <div class="text-center mt-5 p-4 bg-light rounded">
     <h2>Ready to analyze your web traffic?</h2>
-    <p class="lead">Sign up today and start gaining valuable insights from your data.</p>
-    <a class="btn btn-primary btn-lg mt-3" href="{% url 'core:signup' %}">Create Your Account</a>
+    {% if user.is_authenticated %}
+        <p class="lead">Start analyzing your data and gain valuable insights.</p>
+        <a class="btn btn-primary btn-lg mt-3" href="{% url 'dashboard:home' %}">
+            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+        </a>
+    {% else %}
+        <p class="lead">Sign up today and start gaining valuable insights from your data.</p>
+        <a class="btn btn-primary btn-lg mt-3" href="{% url 'core:signup' %}">
+            <i class="fas fa-user-plus me-2"></i>Create Your Account
+        </a>
+    {% endif %}
 </div>
 {% endblock %}

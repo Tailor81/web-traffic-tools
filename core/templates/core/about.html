@@ -153,9 +153,15 @@
         <!-- Call to Action -->
         <div class="text-center my-5">
             <h3>Ready to get started?</h3>
-            <a href="{% url 'core:signup' %}" class="btn btn-primary btn-lg mt-3">
-                <i class="fas fa-user-plus me-2"></i>Create Your Account
-            </a>
+            {% if not user.is_authenticated %}
+                <a href="{% url 'core:signup' %}" class="btn btn-primary btn-lg mt-3">
+                    <i class="fas fa-user-plus me-2"></i>Create Your Account
+                </a>
+            {% else %}
+                <a href="{% url 'dashboard:home' %}" class="btn btn-primary btn-lg mt-3">
+                    <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                </a>
+            {% endif %}
         </div>
     </div>
 </div>
