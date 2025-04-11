@@ -31,7 +31,7 @@ def dashboard_home(request):
         pass
     
     # Default to traffic dashboard if no preference found
-    return redirect('dashboard:traffic')
+    return redirect('dashboard:marketing')
 
 @login_required
 def traffic_dashboard(request):
