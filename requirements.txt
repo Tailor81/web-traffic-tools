@@ -58,3 +58,10 @@ pytest-django
 
 setuptools
 pymongo
+
+
+
+user-agents 
+statsmodels
+scikit-learn
+prophet
