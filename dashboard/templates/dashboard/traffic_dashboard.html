@@ -27,29 +27,10 @@
         margin-bottom: 20px;
         width: 100%;
     }
-
-    .real-time-indicator {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        z-index: 1000;
-        background-color: #28a745;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-size: 0.8rem;
-        display: none;
-    }
-
-    .real-time-indicator.active {
-        display: block;
-    }
 </style>
 {% endblock %}
 
 {% block dashboard_content %}
-<div class="real-time-indicator" id="real-time-indicator">Real-time Updates Active</div>
-
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-md-6 mb-3">
@@ -127,27 +108,9 @@
 {{ block.super }}
 <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
 <script>
-    let updateInterval;
-    let isRealTimeEnabled = true;
-
     // Function to format numbers with commas
     function formatNumber(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    }
-    
-    // Function to animate number changes
-    function animateValue(element, start, end, duration) {
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const currentValue = Math.floor(progress * (end - start) + start);
-            element.textContent = formatNumber(currentValue);
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        window.requestAnimationFrame(step);
     }
     
     // Fetch data and update charts
@@ -158,31 +121,23 @@
         fetch(`{% url 'dashboard:traffic_data' %}?days=${dateRange}&log_file_id=${logFile}`)
             .then(response => response.json())
             .then(data => {
-                // Update metrics with animation
-                const totalVisitsElement = document.getElementById('total-visits');
-                const uniqueVisitorsElement = document.getElementById('unique-visitors');
-                const successRateElement = document.getElementById('success-rate');
-                const errorRateElement = document.getElementById('error-rate');
-
-                // Handle initial values properly
-                const currentTotalVisits = totalVisitsElement.textContent === '-' ? 0 : parseInt(totalVisitsElement.textContent.replace(/,/g, ''));
-                const currentUniqueVisitors = uniqueVisitorsElement.textContent === '-' ? 0 : parseInt(uniqueVisitorsElement.textContent.replace(/,/g, ''));
-                const currentSuccessRate = successRateElement.textContent === '-' ? 0 : parseFloat(successRateElement.textContent);
-                const currentErrorRate = errorRateElement.textContent === '-' ? 0 : parseFloat(errorRateElement.textContent);
-
-                animateValue(totalVisitsElement, currentTotalVisits, data.total_visits, 1000);
-                animateValue(uniqueVisitorsElement, currentUniqueVisitors, data.unique_visitors, 1000);
-                animateValue(successRateElement, currentSuccessRate, data.success_rate, 1000);
-                animateValue(errorRateElement, currentErrorRate, data.error_rate, 1000);
+                // Update metrics
+                document.getElementById('total-visits').textContent = formatNumber(data.total_visits);
+                document.getElementById('unique-visitors').textContent = formatNumber(data.unique_visitors);
+                document.getElementById('success-rate').textContent = data.success_rate.toFixed(1) + '%';
+                document.getElementById('error-rate').textContent = data.error_rate.toFixed(1) + '%';
                 
                 // Update log file dropdown
                 const logFileSelect = document.getElementById('log-file-select');
+                // Save current selection
                 const currentSelection = logFileSelect.value;
                 
+                // Clear options except "All Log Files"
                 while (logFileSelect.options.length > 1) {
                     logFileSelect.remove(1);
                 }
                 
+                // Add log files
                 data.log_files.forEach(file => {
                     const option = document.createElement('option');
                     option.value = file.id;
@@ -190,59 +145,67 @@
                     logFileSelect.appendChild(option);
                 });
                 
-                if (logFileSelect.querySelector(`option[value="${currentSelection}"]`)) {
+                // Restore selection if possible
+                if (Array.from(logFileSelect.options).some(opt => opt.value === currentSelection)) {
                     logFileSelect.value = currentSelection;
                 }
                 
-                // Update charts with smooth transitions
-                if (data.daily_traffic && data.daily_traffic.length > 0) {
-                    Plotly.react('traffic-time-chart', [{
-                        x: data.daily_traffic.map(d => d.date),
-                        y: data.daily_traffic.map(d => d.count),
-                        type: 'line',
-                        mode: 'lines+markers'
-                    }], {
-                        margin: {l: 40, r: 20, t: 10, b: 40},
-                        xaxis: {title: 'Date'},
-                        yaxis: {title: 'Visits'}
-                    });
-                }
+                // Traffic time chart
+                const dailyDates = data.daily_traffic.map(item => item.date);
+                const dailyCounts = data.daily_traffic.map(item => item.count);
                 
-                if (data.category_counts && data.category_counts.length > 0) {
-                    Plotly.react('category-pie-chart', [{
-                        values: data.category_counts.map(c => c.count),
-                        labels: data.category_counts.map(c => c.page_category),
-                        type: 'pie',
-                        textinfo: 'percent+label'
-                    }], {
-                        margin: {l: 20, r: 20, t: 40, b: 20}
-                    });
-                }
+                Plotly.newPlot('traffic-time-chart', [{
+                    x: dailyDates,
+                    y: dailyCounts,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: {color: '#0d6efd', width: 3},
+                    marker: {color: '#0d6efd', size: 6}
+                }], {
+                    margin: {l: 40, r: 20, t: 10, b: 40},
+                    xaxis: {title: 'Date'},
+                    yaxis: {title: 'Visits'}
+                });
                 
-                if (data.status_counts && data.status_counts.length > 0) {
-                    const statusCodes = data.status_counts.map(s => s.status_code);
-                    const statusValues = data.status_counts.map(s => s.count);
-                    const statusColorArray = statusCodes.map(code => {
-                        if (code < 300) return '#28a745';
-                        if (code < 400) return '#ffc107';
-                        if (code < 500) return '#fd7e14';
-                        return '#dc3545';
-                    });
-                    
-                    Plotly.react('status-bar-chart', [{
-                        x: statusCodes,
-                        y: statusValues,
-                        type: 'bar',
-                        marker: {color: statusColorArray}
-                    }], {
-                        margin: {l: 40, r: 20, t: 10, b: 40},
-                        xaxis: {title: 'Status Code'},
-                        yaxis: {title: 'Count'}
-                    });
-                }
+                // Category pie chart
+                Plotly.newPlot('category-pie-chart', [{
+                    labels: data.category_counts.map(item => item.page_category),
+                    values: data.category_counts.map(item => item.count),
+                    type: 'pie',
+                    textinfo: 'percent+label'
+                }], {
+                    margin: {l: 10, r: 10, t: 10, b: 10}
+                });
+                
+                // Status bar chart
+                const statusColors = {
+                    200: '#28a745',  // Success (green)
+                    301: '#ffc107',  // Redirect (yellow)
+                    302: '#ffc107',  // Redirect (yellow)
+                    304: '#17a2b8',  // Not Modified (info)
+                    400: '#fd7e14',  // Bad Request (orange)
+                    404: '#dc3545',  // Not Found (red)
+                    500: '#dc3545'   // Server Error (red)
+                };
+                
+                const statusCodes = data.status_counts.map(item => item.status_code);
+                const statusValues = data.status_counts.map(item => item.count);
+                const statusColorArray = statusCodes.map(code => statusColors[code] || '#6c757d');
+                
+                Plotly.newPlot('status-bar-chart', [{
+                    x: statusCodes,
+                    y: statusValues,
+                    type: 'bar',
+                    marker: {color: statusColorArray}
+                }], {
+                    margin: {l: 40, r: 20, t: 10, b: 40},
+                    xaxis: {title: 'Status Code'},
+                    yaxis: {title: 'Count'}
+                });
             })
             .catch(error => {
                 console.error('Error fetching traffic data:', error);
+                alert('Error loading dashboard data. Please try again.');
             });
     }
     
@@ -254,12 +217,8 @@
         document.getElementById('date-range-select').addEventListener('change', updateDashboard);
         document.getElementById('log-file-select').addEventListener('change', updateDashboard);
         
-        // Start real-time updates
-        updateInterval = setInterval(updateDashboard, 2000);
-        
-        // Show real-time indicator
-        const indicator = document.getElementById('real-time-indicator');
-        indicator.classList.add('active');
+        // Refresh data every 5 minutes
+        setInterval(updateDashboard, 5 * 60 * 1000);
     });
 </script>
 {% endblock %}

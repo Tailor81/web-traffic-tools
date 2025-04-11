@@ -11,6 +11,11 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 
+from django.db import models
+from django.db.models import Count, Q
+from django.db.models.functions import ExtractHour, ExtractWeekDay
+from django.db.models.functions import TruncDate, ExtractHour, ExtractWeekDay
+
 @login_required
 def dashboard_home(request):
     """Dashboard home view - redirect to default dashboard or traffic dashboard"""
@@ -254,11 +259,6 @@ def conversion_data_api(request):
     conversion_query = query.filter(resource__iregex=r'scheduledemo\.php|contact\.php|virtual-assistant\.php')
     converting_visitors = conversion_query.values('ip_address').distinct().count()
     
-    # Calculate conversion rate with proper handling of edge cases
-    conversion_rate = 0.0
-    if total_visitors > 0:
-        conversion_rate = (converting_visitors / total_visitors) * 100
-    
     # Conversion by page
     conversion_by_page = []
     for resource in conversion_resources:
@@ -271,8 +271,8 @@ def conversion_data_api(request):
     # Conversion by country
     conversion_by_country = (
         conversion_query.values('country')
-        .annotate(conversions=Count('id'))
-        .order_by('-conversions')
+        .annotate(count=Count('id'))
+        .order_by('-count')
     )
     
     # Conversion by date
@@ -313,9 +313,244 @@ def conversion_data_api(request):
     return JsonResponse({
         'total_visitors': total_visitors,
         'converting_visitors': converting_visitors,
-        'conversion_rate': conversion_rate,
+        'conversion_rate': (converting_visitors / total_visitors) * 100 if total_visitors > 0 else 0,
         'conversion_by_page': conversion_by_page,
         'conversion_by_country': list(conversion_by_country),
         'conversion_by_date': conversion_by_date,
+        'log_files': log_files
+    })
+    
+
+# Notes from the client
+
+
+
+
+
+
+@login_required
+def marketing_dashboard(request):
+    """Marketing analytics dashboard view"""
+    context = {
+        'dashboard_type': 'marketing',
+        'dashboard_title': 'Marketing Analytics',
+    }
+    return render(request, 'dashboard/marketing_dashboard.html', context)
+
+@login_required
+def marketing_data_api(request):
+    """API endpoint to return marketing analytics data for charts"""
+    days = int(request.GET.get('days', 30))
+    log_file_id = request.GET.get('log_file_id', None)
+    
+    # Calculate date range
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=days)
+    
+    # Base queryset
+    query = LogEntry.objects.filter(timestamp__gte=start_date)
+    
+    # Filter by log file if specified
+    if log_file_id and log_file_id != 'all':
+        query = query.filter(log_file_id=int(log_file_id))
+    
+    # Define conversion pages
+    conversion_resources = [
+        '/scheduledemo.php',
+        '/contact.php',
+        '/virtual-assistant.php'
+    ]
+    
+    # Calculate metrics
+    total_visits = query.count()
+    unique_visitors = query.values('ip_address').distinct().count()
+    conversions = query.filter(resource__iregex=r'scheduledemo\.php|contact\.php|virtual-assistant\.php').count()
+    
+    # Calculate bounce rate (approximation based on session counting)
+    session_counts = {}
+    for entry in query.values('ip_address', 'timestamp'):
+        # Create a simple session ID using IP and date
+        session_id = f"{entry['ip_address']}_{entry['timestamp'].strftime('%Y%m%d')}"
+        session_counts[session_id] = session_counts.get(session_id, 0) + 1
+    
+    bounce_sessions = sum(1 for count in session_counts.values() if count == 1)
+    total_sessions = len(session_counts)
+    bounce_rate = (bounce_sessions / total_sessions) * 100 if total_sessions > 0 else 0
+    
+    # Traffic by page category
+    category_traffic = (
+        query.values('page_category')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    
+    # Traffic by country
+    country_traffic = (
+        query.values('country')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    
+    # Traffic by date for forecasting
+    daily_traffic = (
+        query.annotate(date=TruncDate('timestamp'))
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+    
+    # Traffic by hour for heatmap
+    hourly_traffic = (
+        query.annotate(hour=ExtractHour('timestamp'))
+        .values('hour')
+        .annotate(count=Count('id'))
+        .order_by('hour')
+    )
+    
+    # Traffic by day of week for heatmap
+    dow_traffic = (
+        query.annotate(day_of_week=ExtractWeekDay('timestamp'))
+        .values('day_of_week')
+        .annotate(count=Count('id'))
+        .order_by('day_of_week')
+    )
+    
+    # Page performance
+    page_performance = (
+        query.values('resource')
+        .annotate(
+            count=Count('id'),
+            conversion_count=Count('id', filter=Q(resource__iregex=r'scheduledemo\.php|contact\.php|virtual-assistant\.php'))
+        )
+        .order_by('-count')
+    )
+    
+    # Calculate conversion rate for each page
+    for page in page_performance:
+        page['conversion_rate'] = (page['conversion_count'] / page['count']) * 100 if page['count'] > 0 else 0
+    
+    # Log files for dropdown
+    log_files = list(LogFile.objects.filter(status='completed').values('id', 'name'))
+    
+    return JsonResponse({
+        'total_visits': total_visits,
+        'unique_visitors': unique_visitors,
+        'conversions': conversions,
+        'bounce_rate': bounce_rate,
+        'total_sessions': total_sessions,
+        'category_traffic': list(category_traffic),
+        'country_traffic': list(country_traffic),
+        'daily_traffic': list(daily_traffic),
+        'hourly_traffic': list(hourly_traffic),
+        'dow_traffic': list(dow_traffic),
+        'page_performance': list(page_performance),
+        'log_files': log_files
+    })
+
+    """API endpoint to return marketing analytics data for charts"""
+    days = int(request.GET.get('days', 30))
+    log_file_id = request.GET.get('log_file_id', None)
+    
+    # Calculate date range
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=days)
+    
+    # Base queryset
+    query = LogEntry.objects.filter(timestamp__gte=start_date)
+    
+    # Filter by log file if specified
+    if log_file_id and log_file_id != 'all':
+        query = query.filter(log_file_id=int(log_file_id))
+    
+    # Define conversion pages
+    conversion_resources = [
+        '/scheduledemo.php',
+        '/contact.php',
+        '/virtual-assistant.php'
+    ]
+    
+    # Calculate metrics
+    total_visits = query.count()
+    unique_visitors = query.values('ip_address').distinct().count()
+    conversions = query.filter(resource__iregex=r'scheduledemo\.php|contact\.php|virtual-assistant\.php').count()
+    
+    # Calculate bounce rate (approximation based on session counting)
+    session_counts = {}
+    for entry in query.values('ip_address', 'timestamp'):
+        # Create a simple session ID using IP and date
+        session_id = f"{entry['ip_address']}_{entry['timestamp'].strftime('%Y%m%d')}"
+        session_counts[session_id] = session_counts.get(session_id, 0) + 1
+    
+    bounce_sessions = sum(1 for count in session_counts.values() if count == 1)
+    total_sessions = len(session_counts)
+    bounce_rate = (bounce_sessions / total_sessions) * 100 if total_sessions > 0 else 0
+    
+    # Traffic by page category
+    category_traffic = (
+        query.values('page_category')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    
+    # Traffic by country
+    country_traffic = (
+        query.values('country')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    
+    # Traffic by date for forecasting
+    daily_traffic = (
+        query.extra({'date': "date(timestamp)"})
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+    
+    # Traffic by hour for heatmap
+    hourly_traffic = (
+        query.extra({'hour': "EXTRACT(hour FROM timestamp)"})
+        .values('hour')
+        .annotate(count=Count('id'))
+        .order_by('hour')
+    )
+    
+    # Traffic by day of week for heatmap
+    dow_traffic = (
+        query.extra({'day_of_week': "EXTRACT(dow FROM timestamp)"})
+        .values('day_of_week')
+        .annotate(count=Count('id'))
+        .order_by('day_of_week')
+    )
+    
+    # Page performance
+    page_performance = (
+        query.values('resource')
+        .annotate(
+            count=Count('id'),
+            conversion_count=Count('id', filter=models.Q(resource__iregex=r'scheduledemo\.php|contact\.php|virtual-assistant\.php'))
+        )
+        .order_by('-count')
+    )
+    
+    # Calculate conversion rate for each page
+    for page in page_performance:
+        page['conversion_rate'] = (page['conversion_count'] / page['count']) * 100 if page['count'] > 0 else 0
+    
+    # Log files for dropdown
+    log_files = list(LogFile.objects.filter(status='completed').values('id', 'name'))
+    
+    return JsonResponse({
+        'total_visits': total_visits,
+        'unique_visitors': unique_visitors,
+        'conversions': conversions,
+        'bounce_rate': bounce_rate,
+        'total_sessions': total_sessions,
+        'category_traffic': list(category_traffic),
+        'country_traffic': list(country_traffic),
+        'daily_traffic': list(daily_traffic),
+        'hourly_traffic': list(hourly_traffic),
+        'dow_traffic': list(dow_traffic),
+        'page_performance': list(page_performance),
         'log_files': log_files
     })
