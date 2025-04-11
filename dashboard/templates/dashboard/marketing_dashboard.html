@@ -1,0 +1,666 @@
+<!-- dashboard/templates/dashboard/marketing_dashboard.html -->
+{% extends "dashboard/dashboard_base.html" %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .metric-card {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+    
+    .chart-container {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+    
+    .insight-box {
+        background-color: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 0 4px 4px 0;
+    }
+    
+    .insight-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .dashboard-nav {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid py-4">
+    <div class="dashboard-nav mb-4">
+        <div class="d-flex align-items-center">
+            <span class="me-3"><i class="fas fa-cogs me-2"></i>Select Data Range:</span>
+            <select id="marketing-date-range" class="form-select me-3" style="width: auto;">
+                <option value="7">Last 7 Days</option>
+                <option value="14">Last 14 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">Last Year</option>
+            </select>
+            
+            <span class="me-3"><i class="fas fa-file-alt me-2"></i>Log File:</span>
+            <select id="marketing-log-file" class="form-select" style="width: auto;">
+                <option value="all">All Log Files</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-4"><i class="fas fa-chart-pie me-2"></i>Marketing Analytics Dashboard</h2>
+            <p class="lead">
+                Advanced insights to optimize your marketing strategies and increase conversions.
+                This dashboard provides AI-powered analytics that help identify patterns, forecast trends,
+                and understand user behavior across your digital channels.
+            </p>
+        </div>
+    </div>
+
+    <!-- Core KPIs -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5><i class="fas fa-users me-2"></i>Total Sessions</h5>
+                <div id="total-sessions" class="metric-value">-</div>
+                <div id="sessions-trend" class="text-muted">vs. previous period</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5><i class="fas fa-handshake me-2"></i>Conversion Rate</h5>
+                <div id="conversion-rate" class="metric-value">-</div>
+                <div id="conversion-trend" class="text-muted">vs. previous period</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5><i class="fas fa-sign-out-alt me-2"></i>Bounce Rate</h5>
+                <div id="bounce-rate" class="metric-value">-</div>
+                <div id="bounce-trend" class="text-muted">vs. previous period</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <h5><i class="fas fa-clock me-2"></i>Avg Time on Site</h5>
+                <div id="avg-time" class="metric-value">-</div>
+                <div id="time-trend" class="text-muted">vs. previous period</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Insights Row -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5><i class="fas fa-robot me-2"></i>AI-Powered Insights</h5>
+                <div id="ai-insights" class="mt-3">
+                    <div class="insight-box">
+                        <div class="insight-title">Traffic Forecast</div>
+                        <p>Based on current trends, we predict a <span id="forecast-change">0%</span> change in traffic over the next 7 days.</p>
+                    </div>
+                    <div class="insight-box">
+                        <div class="insight-title">Engagement Opportunities</div>
+                        <p>The most engaged visitors are coming from <span id="top-country">loading...</span> with an average time on site of <span id="top-country-time">0s</span>.</p>
+                    </div>
+                    <div class="insight-box">
+                        <div class="insight-title">Conversion Optimization</div>
+                        <p>Users who visit <span id="conversion-page">loading...</span> have a <span id="conversion-chance">0%</span> higher chance of converting.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Dashboard Content -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h5><i class="fas fa-chart-line me-2"></i>Traffic Forecast (Next 7 Days)</h5>
+                <div id="forecast-chart" style="height: 350px;"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <h5><i class="fas fa-globe me-2"></i>Top Traffic Sources</h5>
+                <div id="traffic-sources-chart" style="height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5><i class="fas fa-route me-2"></i>User Journey Analysis</h5>
+                <div id="user-journey-chart" style="height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5><i class="fas fa-calendar-alt me-2"></i>Traffic Distribution by Time</h5>
+                <div id="traffic-heatmap" style="height: 400px;"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5><i class="fas fa-funnel-dollar me-2"></i>Conversion Path Analysis</h5>
+                <div id="conversion-path-chart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5><i class="fas fa-users-cog me-2"></i>Customer Segmentation</h5>
+                <div id="segmentation-chart" style="height: 450px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h5><i class="fas fa-file-alt me-2"></i>Top Performing Pages</h5>
+                <div id="page-performance-table" class="table-responsive mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+    // Function to format numbers with commas
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+    
+    // Function to initialize dashboard
+    function initMarketingDashboard() {
+        const dateRange = document.getElementById('marketing-date-range').value;
+        const logFile = document.getElementById('marketing-log-file').value;
+        
+        fetch(`{% url 'dashboard:marketing_data' %}?days=${dateRange}&log_file_id=${logFile}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update log file dropdown
+                updateLogFileDropdown(data.log_files);
+                
+                // Update KPI metrics
+                updateKPIMetrics(data);
+                
+                // Update AI insights
+                updateAIInsights(data);
+                
+                // Update forecast chart
+                createForecastChart(data);
+                
+                // Update traffic sources
+                createTrafficSourcesChart(data);
+                
+                // Update user journey
+                createUserJourneyChart(data);
+                
+                // Update traffic heatmap
+                createTrafficHeatmap(data);
+                
+                // Update conversion path
+                createConversionPathChart(data);
+                
+                // Update segmentation chart
+                createSegmentationChart(data);
+                
+                // Update page performance table
+                createPagePerformanceTable(data);
+            })
+            .catch(error => {
+                console.error('Error fetching marketing data:', error);
+                alert('Error loading dashboard data. Please try again.');
+            });
+    }
+    
+    // Function to update log file dropdown
+    function updateLogFileDropdown(logFiles) {
+        const logFileSelect = document.getElementById('marketing-log-file');
+        // Save current selection
+        const currentSelection = logFileSelect.value;
+        
+        // Clear options except "All Log Files"
+        while (logFileSelect.options.length > 1) {
+            logFileSelect.remove(1);
+        }
+        
+        // Add log files
+        logFiles.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file.id;
+            option.textContent = file.name;
+            logFileSelect.appendChild(option);
+        });
+        
+        // Restore selection if possible
+        if (Array.from(logFileSelect.options).some(opt => opt.value === currentSelection)) {
+            logFileSelect.value = currentSelection;
+        }
+    }
+    
+    // Function to update KPI metrics
+    function updateKPIMetrics(data) {
+        document.getElementById('total-sessions').textContent = formatNumber(data.total_sessions);
+        document.getElementById('conversion-rate').textContent = `${data.conversions / data.total_visits * 100 || 0}%`;
+        document.getElementById('bounce-rate').textContent = `${data.bounce_rate.toFixed(1)}%`;
+        document.getElementById('avg-time').textContent = '120s'; // Placeholder - calculate from actual data
+        
+        // Add placeholder trends
+        document.getElementById('sessions-trend').textContent = '↑ 12% vs. previous period';
+        document.getElementById('conversion-trend').textContent = '↑ 5% vs. previous period';
+        document.getElementById('bounce-trend').textContent = '↓ 3% vs. previous period';
+        document.getElementById('time-trend').textContent = '↑ 8% vs. previous period';
+    }
+    
+    // Function to update AI insights
+    function updateAIInsights(data) {
+        // Placeholder insights - in a real implementation, these would be calculated
+        document.getElementById('forecast-change').textContent = '15%';
+        
+        if (data.country_traffic && data.country_traffic.length > 0) {
+            document.getElementById('top-country').textContent = data.country_traffic[0].country;
+            document.getElementById('top-country-time').textContent = '145s';
+        }
+        
+        if (data.page_performance && data.page_performance.length > 0) {
+            // Find page with highest conversion rate
+            const sortedPages = [...data.page_performance].sort((a, b) => b.conversion_rate - a.conversion_rate);
+            if (sortedPages.length > 0) {
+                document.getElementById('conversion-page').textContent = sortedPages[0].resource;
+                document.getElementById('conversion-chance').textContent = '250%';
+            }
+        }
+    }
+    
+    // Function to create forecast chart
+    function createForecastChart(data) {
+        // Sample data - in a real implementation, this would be calculated
+        const dates = [];
+        const actual = [];
+        const forecast = [];
+        const lowerBound = [];
+        const upperBound = [];
+        
+        // Historical dates (last 30 days)
+        for (let i = 30; i > 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            dates.push(date.toISOString().split('T')[0]);
+            actual.push(Math.floor(Math.random() * 1000) + 500);
+            forecast.push(null);
+            lowerBound.push(null);
+            upperBound.push(null);
+        }
+        
+        // Forecast dates (next 7 days)
+        for (let i = 1; i <= 7; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() + i);
+            dates.push(date.toISOString().split('T')[0]);
+            actual.push(null);
+            
+            // Simple forecast with some randomness
+            const lastActual = actual[actual.length - 8];
+            const forecastValue = lastActual * (1 + (Math.random() * 0.3 - 0.1));
+            forecast.push(forecastValue);
+            
+            // Add confidence interval
+            lowerBound.push(forecastValue * 0.8);
+            upperBound.push(forecastValue * 1.2);
+        }
+        
+        const trace1 = {
+            x: dates,
+            y: actual,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Actual Traffic',
+            line: {color: '#1f77b4', width: 3},
+            marker: {size: 6}
+        };
+        
+        const trace2 = {
+            x: dates,
+            y: forecast,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Forecast',
+            line: {color: '#ff7f0e', width: 3, dash: 'dash'}
+        };
+        
+        const trace3 = {
+            x: dates.concat(dates.slice().reverse()),
+            y: upperBound.concat(lowerBound.slice().reverse()),
+            fill: 'toself',
+            fillcolor: 'rgba(255, 127, 14, 0.2)',
+            line: {color: 'transparent'},
+            name: '95% Confidence',
+            showlegend: true
+        };
+        
+        const layout = {
+            margin: {l: 50, r: 20, t: 20, b: 50},
+            xaxis: {title: 'Date'},
+            yaxis: {title: 'Visits'},
+            legend: {orientation: 'h', y: 1.1},
+            shapes: [{
+                type: 'line',
+                x0: dates[dates.length - 8],
+                y0: 0,
+                x1: dates[dates.length - 8],
+                y1: 1,
+                yref: 'paper',
+                line: {
+                    color: 'grey',
+                    width: 1,
+                    dash: 'dot'
+                }
+            }],
+            annotations: [{
+                x: dates[dates.length - 8],
+                y: 1,
+                yref: 'paper',
+                text: 'Today',
+                showarrow: false,
+                bgcolor: '#f8f9fa',
+                borderpad: 4
+            }]
+        };
+        
+        Plotly.newPlot('forecast-chart', [trace1, trace2, trace3], layout);
+    }
+    
+    // Function to create traffic sources chart
+    function createTrafficSourcesChart(data) {
+        // Sample data
+        const sources = ['Organic', 'Direct', 'Social', 'Referral', 'Email'];
+        const values = [45, 25, 15, 10, 5];
+        
+        const trace = {
+            labels: sources,
+            values: values,
+            type: 'pie',
+            textinfo: 'label+percent',
+            insidetextorientation: 'radial',
+            marker: {
+                colors: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+            }
+        };
+        
+        const layout = {
+            margin: {l: 20, r: 20, t: 30, b: 20},
+            showlegend: false
+        };
+        
+        Plotly.newPlot('traffic-sources-chart', [trace], layout);
+    }
+    
+    // Function to create user journey chart
+    function createUserJourneyChart(data) {
+        // Sample sankey diagram data
+        const nodes = {
+            label: ['Entry', 'Home', 'Products', 'About', 'Contact', 'Demo', 'Exit'],
+            color: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#7f7f7f']
+        };
+        
+        const links = {
+            source: [0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 5],
+            target: [1, 2, 3, 2, 4, 6, 5, 6, 4, 6, 6, 6],
+            value: [20, 15, 10, 10, 5, 5, 8, 7, 6, 4, 10, 8],
+            color: 'rgba(31, 119, 180, 0.4)'
+        };
+        
+        const trace = {
+            type: 'sankey',
+            orientation: 'h',
+            node: nodes,
+            link: links
+        };
+        
+        const layout = {
+            margin: {l: 0, r: 0, t: 20, b: 20},
+            font: {size: 10}
+        };
+        
+        Plotly.newPlot('user-journey-chart', [trace], layout);
+    }
+    
+    // Function to create traffic heatmap
+    function createTrafficHeatmap(data) {
+        // Sample data
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const hours = Array.from({length: 24}, (_, i) => i);
+        
+        const z = [
+            [1, 2, 3, 0, 0, 0, 5, 10, 15, 20, 25, 30, 25, 20, 15, 10, 20, 25, 15, 10, 5, 4, 3, 2],
+            [1, 2, 3, 0, 0, 0, 6, 12, 18, 24, 30, 35, 30, 25, 20, 15, 25, 30, 20, 15, 10, 5, 4, 3],
+            [2, 3, 4, 0, 0, 0, 7, 14, 21, 28, 35, 40, 35, 30, 25, 20, 30, 35, 25, 20, 15, 10, 5, 4],
+            [2, 3, 4, 0, 0, 0, 6, 12, 18, 24, 30, 36, 30, 24, 18, 12, 24, 30, 24, 18, 12, 6, 4, 2],
+            [1, 2, 3, 0, 0, 0, 5, 10, 15, 20, 25, 30, 25, 20, 15, 10, 20, 25, 15, 10, 5, 4, 3, 2],
+            [0, 1, 2, 0, 0, 0, 3, 6, 9, 12, 15, 18, 15, 12, 9, 6, 12, 15, 12, 9, 6, 3, 2, 1],
+            [0, 1, 2, 0, 0, 0, 2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 8, 10, 8, 6, 4, 2, 1, 0]
+        ];
+        
+        const data_heatmap = [{
+            z: z,
+            x: hours,
+            y: days,
+            type: 'heatmap',
+            colorscale: 'Blues',
+            hoverinfo: 'z',
+            showscale: true,
+            colorbar: {
+                title: 'Visits',
+                titleside: 'right'
+            }
+        }];
+        
+        const layout = {
+            margin: {l: 100, r: 20, t: 20, b: 50},
+            xaxis: {
+                title: 'Hour of Day',
+                dtick: 2
+            },
+            yaxis: {
+                title: 'Day of Week'
+            }
+        };
+        
+        Plotly.newPlot('traffic-heatmap', data_heatmap, layout);
+    }
+    
+    // Function to create conversion path chart
+    function createConversionPathChart(data) {
+        // Sample funnel data
+        const values = [1000, 750, 500, 250, 100];
+        const stages = ['Visitors', 'View Product', 'Add to Cart', 'Checkout', 'Purchase'];
+        
+        const trace = {
+            type: 'funnel',
+            y: stages,
+            x: values,
+            textinfo: 'value+percent initial',
+            marker: {
+                color: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+            }
+        };
+        
+        const layout = {
+            margin: {l: 150, r: 20, t: 20, b: 20},
+            funnelmode: 'stack',
+            showlegend: false
+        };
+        
+        Plotly.newPlot('conversion-path-chart', [trace], layout);
+    }
+    
+    // Function to create segmentation chart
+    function createSegmentationChart(data) {
+        // Sample scatter plot data for customer segmentation
+        const countries = data.country_traffic ? 
+            data.country_traffic.slice(0, 10).map(item => item.country) : 
+            ['USA', 'UK', 'Canada', 'Germany', 'France', 'Japan', 'Australia', 'Brazil', 'India', 'China'];
+            
+        const avgTime = [120, 90, 110, 80, 130, 70, 100, 60, 150, 50];
+        const convRate = [0.05, 0.03, 0.04, 0.02, 0.06, 0.01, 0.045, 0.025, 0.07, 0.015];
+        const totalVisits = [5000, 3000, 4000, 2000, 6000, 1000, 4500, 2500, 7000, 1500];
+        const bounceRate = [0.3, 0.4, 0.35, 0.45, 0.25, 0.5, 0.33, 0.42, 0.2, 0.48];
+        
+        const trace = {
+            x: avgTime,
+            y: convRate,
+            mode: 'markers+text',
+            type: 'scatter',
+            text: countries,
+            textposition: 'top center',
+            marker: {
+                size: totalVisits.map(v => Math.sqrt(v) * 0.1),
+                color: bounceRate,
+                colorscale: 'RdYlGn_r',
+                reversescale: true,
+                colorbar: {
+                    title: 'Bounce Rate',
+                    tickformat: ',.0%'
+                },
+                line: {
+                    color: 'rgba(0, 0, 0, 0.5)',
+                    width: 1
+                }
+            }
+        };
+        
+        const layout = {
+            margin: {l: 50, r: 50, t: 20, b: 50},
+            xaxis: {
+                title: 'Average Time on Site (seconds)',
+                zeroline: false
+            },
+            yaxis: {
+                title: 'Conversion Rate',
+                tickformat: ',.0%',
+                zeroline: false
+            },
+            hovermode: 'closest'
+        };
+        
+        Plotly.newPlot('segmentation-chart', [trace], layout);
+    }
+    
+    // Function to create page performance table
+    function createPagePerformanceTable(data) {
+        // Create table headers
+        let tableHTML = `
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Page</th>
+                        <th>Views</th>
+                        <th>Avg Time</th>
+                        <th>Bounce Rate</th>
+                        <th>Conversion Rate</th>
+                        <th>Performance Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        // Sample page data
+        const pages = [
+            {page: '/index.html', views: 5000, avgTime: '120s', bounceRate: '25%', convRate: '3.5%', score: '8.5'},
+            {page: '/products.html', views: 3500, avgTime: '90s', bounceRate: '30%', convRate: '4.2%', score: '8.1'},
+            {page: '/contact.php', views: 2000, avgTime: '60s', bounceRate: '40%', convRate: '5.0%', score: '7.8'},
+            {page: '/about.html', views: 1500, avgTime: '45s', bounceRate: '35%', convRate: '1.0%', score: '6.5'},
+            {page: '/scheduledemo.php', views: 1200, avgTime: '180s', bounceRate: '20%', convRate: '12.0%', score: '9.2'},
+            {page: '/blog/post1.html', views: 1000, avgTime: '150s', bounceRate: '28%', convRate: '2.0%', score: '7.4'},
+            {page: '/virtual-assistant.php', views: 800, avgTime: '200s', bounceRate: '15%', convRate: '8.5%', score: '9.0'},
+            {page: '/event.php', views: 600, avgTime: '90s', bounceRate: '32%', convRate: '3.0%', score: '7.2'},
+            {page: '/prototype.php', views: 500, avgTime: '210s', bounceRate: '18%', convRate: '7.5%', score: '8.8'},
+            {page: '/images/logo.png', views: 400, avgTime: '10s', bounceRate: '95%', convRate: '0.0%', score: '2.1'}
+        ];
+        
+        // Add rows
+        pages.forEach(page => {
+            let scoreClass = '';
+            const score = parseFloat(page.score);
+            
+            if (score >= 8.5) {
+                scoreClass = 'text-success fw-bold';
+            } else if (score >= 7) {
+                scoreClass = 'text-primary';
+            } else if (score >= 5) {
+                scoreClass = 'text-warning';
+            } else {
+                scoreClass = 'text-danger';
+            }
+            
+            tableHTML += `
+                <tr>
+                    <td>${page.page}</td>
+                    <td>${formatNumber(page.views)}</td>
+                    <td>${page.avgTime}</td>
+                    <td>${page.bounceRate}</td>
+                    <td>${page.convRate}</td>
+                    <td class="${scoreClass}">${page.score}</td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += `
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('page-performance-table').innerHTML = tableHTML;
+    }
+    
+    // Initialize dashboard on load
+    document.addEventListener('DOMContentLoaded', function() {
+        initMarketingDashboard();
+        
+        // Add event listeners for filters
+        document.getElementById('marketing-date-range').addEventListener('change', initMarketingDashboard);
+        document.getElementById('marketing-log-file').addEventListener('change', initMarketingDashboard);
+        
+        // Refresh data every 5 minutes
+        setInterval(initMarketingDashboard, 5 * 60 * 1000);
+    });
+</script>
+{% endblock %}
