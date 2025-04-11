@@ -35,6 +35,9 @@
             <h1>{{ dashboard_title }}</h1>
             <div>
                 <div class="btn-group" role="group">
+                    <a href="{% url 'dashboard:marketing' %}" class="btn btn-outline-primary {% if dashboard_type == 'marketing' %}active{% endif %}">
+                        <i class="fas fa-funnel-dollar me-1"></i> Marketing
+                    </a>
                     <a href="{% url 'dashboard:traffic' %}" class="btn btn-outline-primary {% if dashboard_type == 'traffic' %}active{% endif %}">
                         <i class="fas fa-chart-line me-1"></i> Traffic
                     </a>
