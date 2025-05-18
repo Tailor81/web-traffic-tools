@@ -66,11 +66,50 @@ class LogEntry(models.Model):
     status_code = models.IntegerField()
     country = models.CharField(max_length=100, blank=True, default='Unknown')
     page_category = models.CharField(max_length=50, default='other')
-    mongodb_id = models.CharField(max_length=50, blank=True, null=True, db_index=True)  # Add this field
-    
+
+    # Web Traffic & User Behavior Fields
+    utm_source = models.CharField(max_length=100, blank=True, null=True)
+    utm_campaign = models.CharField(max_length=100, blank=True, null=True)
+    session_id = models.CharField(max_length=100, blank=True, null=True)
+    user_id = models.CharField(max_length=100, blank=True, null=True)
+    product_interest = models.CharField(max_length=255, blank=True, null=True)
+    interest_level = models.IntegerField(blank=True, null=True)
+    action_type = models.CharField(max_length=50, blank=True, null=True)
+    converted = models.BooleanField(default=False)
+    visit_duration_sec = models.IntegerField(blank=True, null=True)
+    device_type = models.CharField(max_length=50, blank=True, null=True)
+    returning_user = models.BooleanField(default=False)
+
+    # Revenue & Transaction Fields
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    purchase_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    currency = models.CharField(max_length=10, default='USD')
+    product_id = models.CharField(max_length=100, blank=True, null=True)
+    product_name = models.CharField(max_length=255, blank=True, null=True)
+    product_category = models.CharField(max_length=100, blank=True, null=True)
+    quantity = models.IntegerField(blank=True, null=True)
+
+    # Marketing Attribution Fields
+    attribution_channel = models.CharField(max_length=100, blank=True, null=True)
+    attribution_campaign = models.CharField(max_length=100, blank=True, null=True)
+    discount_code = models.CharField(max_length=50, blank=True, null=True)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
+    # Customer Value Fields
+    customer_segment = models.CharField(max_length=100, blank=True, null=True)
+    customer_lifetime_value = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    repeat_purchase = models.BooleanField(default=False)
+    days_since_last_purchase = models.IntegerField(blank=True, null=True)
+
+    # Financial Analysis Fields
+    cost_of_goods_sold = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    profit_margin = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    acquisition_cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    roi = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+
     def __str__(self):
         return f"{self.timestamp} - {self.ip_address} - {self.resource}"
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['timestamp']),

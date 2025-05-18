@@ -6,8 +6,8 @@ app_name = 'dashboard'
 
 urlpatterns = [
     path('', views.dashboard_home, name='home'),
-    # Marketing dashboard is now first - as requested by your lecturer
     path('marketing/', views.marketing_dashboard, name='marketing'),
+    path('api/marketing-data/', views.marketing_data_api, name='marketing_data'),
     path('traffic/', views.traffic_dashboard, name='traffic'),
     path('geographic/', views.geographic_dashboard, name='geo'),
     path('conversion/', views.conversion_dashboard, name='conversion'),
@@ -17,5 +17,4 @@ urlpatterns = [
     path('api/traffic-data/', views.traffic_data_api, name='traffic_data'),
     path('api/geo-data/', views.geo_data_api, name='geo_data'),
     path('api/conversion-data/', views.conversion_data_api, name='conversion_data'),
-    path('api/marketing-data/', views.marketing_data_api, name='marketing_data'),
 ]

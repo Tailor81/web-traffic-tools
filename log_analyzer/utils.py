@@ -10,6 +10,8 @@ import logging
 from urllib.parse import quote_plus
 from django.utils import timezone
 import threading
+from decimal import Decimal, InvalidOperation
+from django.utils.timezone import make_aware
 
 from .models import LogFile, LogEntry, ExternalDataSource
 
@@ -147,45 +149,23 @@ def parse_csv_file(content):
         row_count = len(df)
         logger.info(f"Processing {row_count} rows from CSV")
         
+        seen_entries = set()  # Track unique entries to skip duplicates
         for i, row in df.iterrows():
             try:
                 entry = {}
                 
                 # Get values from mapped columns or use defaults
                 for target in required_cols:
-                    if target in column_mapping and column_mapping[target] in row:
-                        value = row[column_mapping[target]]
-                        
-                        # Special handling for timestamp
-                        if target == 'timestamp':
-                            if pd.isna(value):
-                                value = datetime.now()
-                            elif isinstance(value, str):
-                                try:
-                                    value = pd.to_datetime(value)
-                                except:
-                                    value = datetime.now()
-                        
-                        # Special handling for status_code
-                        if target == 'status_code':
-                            try:
-                                value = int(value)
-                            except:
-                                value = 200  # Default to 200 OK
-                        
-                        entry[target] = value
+                    if target in column_mapping:
+                        entry[target] = row[column_mapping[target]]
                     else:
-                        # Use defaults for missing columns
-                        if target == 'timestamp':
-                            entry[target] = datetime.now()
-                        elif target == 'ip_address':
-                            entry[target] = f"192.168.1.{random.randint(1, 255)}"
-                        elif target == 'http_method':
-                            entry[target] = 'GET'
-                        elif target == 'resource':
-                            entry[target] = '/index.html'
-                        elif target == 'status_code':
-                            entry[target] = 200
+                        entry[target] = None  # Default to None if column is missing
+                
+                # Skip duplicate entries
+                entry_tuple = tuple(entry.items())
+                if entry_tuple in seen_entries:
+                    continue
+                seen_entries.add(entry_tuple)
                 
                 entries.append(entry)
                 
@@ -220,23 +200,17 @@ def parse_csv_file(content):
                     if not timestamp:
                         timestamp = datetime.now()
                     if not ip:
-                        ip = f"192.168.1.{random.randint(1, 255)}"
+                        ip = '0.0.0.0'
                     if not method:
                         method = 'GET'
                     if not resource:
-                        resource = '/index.html'
+                        resource = '/unknown'
                     if not status:
                         status = 200
                     
                     # Convert timestamp if it's a string
                     if isinstance(timestamp, str):
-                        try:
-                            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                        except:
-                            try:
-                                timestamp = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
-                            except:
-                                timestamp = datetime.now()
+                        timestamp = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
                     
                     entry = {
                         'timestamp': timestamp,
@@ -245,10 +219,17 @@ def parse_csv_file(content):
                         'resource': resource,
                         'status_code': int(status) if isinstance(status, (int, str)) and str(status).isdigit() else 200
                     }
+                    
+                    # Skip duplicate entries
+                    entry_tuple = tuple(entry.items())
+                    if entry_tuple in seen_entries:
+                        continue
+                    seen_entries.add(entry_tuple)
+                    
                     entries.append(entry)
                     
                 except Exception as row_error:
-                    logger.error(f"Error parsing CSV row {i}: {row_error}")
+                    logger.error(f"Error processing row {i}: {row_error}")
                     continue
             
             logger.info(f"Successfully parsed {len(entries)} entries using csv module")
@@ -259,42 +240,131 @@ def parse_csv_file(content):
             return []
 
 def enrich_log_data(entries):
-    """Add geographical and categorical data to log entries"""
-    logger.info(f"Enriching {len(entries)} log entries with geo and category data")
+    """Enrich log data with additional fields"""
+    enriched_entries = []
     
-    countries = ['United States', 'United Kingdom', 'Canada', 'Germany', 
-                'France', 'Australia', 'Japan', 'Brazil', 'India', 'China']
+    # Define possible values for marketing fields
+    utm_sources = ['google', 'facebook', 'twitter', 'email', 'direct', 'referral', 'bing', 'linkedin']
+    utm_campaigns = ['summer_sale', 'black_friday', 'product_launch', 'newsletter', 'social_promotion', 'holiday_special']
+    device_types = ['mobile', 'desktop', 'tablet']
+    action_types = ['page_view', 'add_to_cart', 'purchase', 'signup', 'login', 'search']
+    product_categories = ['electronics', 'clothing', 'books', 'home_goods', 'sports', 'beauty']
+    attribution_channels = ['organic_search', 'paid_search', 'social', 'email', 'direct', 'affiliate']
+    customer_segments = ['new', 'returning', 'premium', 'vip', 'at_risk', 'inactive']
+    discount_codes = ['SUMMER10', 'WELCOME20', 'FLASH50', 'SPECIAL25', 'HOLIDAY15', None, None, None]
     
-    page_categories = {
-        'index.html': 'home',
-        'event.php': 'events',
-        'scheduledemo.php': 'demo',
-        'prototype.php': 'product',
-        'virtual-assistant.php': 'product',
-        'contact.php': 'contact',
-        'about.html': 'about',
-        'images/': 'static',
-        'css/': 'static',
-        'js/': 'static',
-        'api/': 'api'
-    }
+    # Track user sessions and behavior
+    user_sessions = {}
     
     for entry in entries:
-        # Add random country (in a real app, this would use IP geolocation)
-        entry['country'] = random.choice(countries)
+        # Ensure timestamp is timezone-aware
+        if isinstance(entry['timestamp'], datetime) and entry['timestamp'].tzinfo is None:
+            entry['timestamp'] = make_aware(entry['timestamp'])
+
+        # Get or create session info for this IP
+        ip = entry['ip_address']
+        if ip not in user_sessions:
+            user_sessions[ip] = {
+                'last_visit': entry['timestamp'],
+                'session_id': entry.get('session_id') or ''.join(random.choices('0123456789abcdef', k=32)),
+                'visit_count': 0
+            }
         
-        # Categorize pages
-        resource = entry.get('resource', '').lower()
-        category = 'other'
+        session_info = user_sessions[ip]
+        session_info['visit_count'] += 1
         
-        for pattern, cat in page_categories.items():
-            if pattern in resource:
-                category = cat
-                break
+        # Determine if this is a returning user (visited more than once)
+        is_returning = session_info['visit_count'] > 1
         
-        entry['page_category'] = category
+        # Generate visit duration (between 10 seconds and 30 minutes)
+        visit_duration = entry.get('visit_duration_sec') or random.randint(10, 1800)
+        
+        # Determine if this visit resulted in a conversion (10% chance if not already set)
+        converted = entry.get('converted', False) or random.random() < 0.1
+        
+        # Create enriched entry with existing fields
+        enriched_entry = {
+            'timestamp': entry['timestamp'],
+            'ip_address': entry['ip_address'],
+            'http_method': entry['http_method'],
+            'resource': entry['resource'],
+            'status_code': entry['status_code'],
+            'country': entry.get('country', 'Unknown'),
+            'page_category': entry.get('page_category', 'other'),
+            
+            # Web Traffic & User Behavior - preserve existing values or generate new ones
+            'utm_source': entry.get('utm_source') or (random.choice(utm_sources) if random.random() < 0.7 else None),
+            'utm_campaign': entry.get('utm_campaign') or (random.choice(utm_campaigns) if random.random() < 0.7 else None),
+            'session_id': entry.get('session_id') or session_info['session_id'],
+            'user_id': entry.get('user_id') or (f"user_{random.randint(1, 1000)}" if random.random() < 0.6 else None),
+            'product_interest': entry.get('product_interest') or (random.choice(product_categories) if random.random() < 0.5 else None),
+            'interest_level': entry.get('interest_level') or (random.randint(1, 10) if random.random() < 0.5 else None),
+            'action_type': entry.get('action_type') or random.choice(action_types),
+            'converted': converted,
+            'visit_duration_sec': visit_duration,
+            'device_type': entry.get('device_type') or random.choice(device_types),
+            'returning_user': entry.get('returning_user', is_returning)
+        }
+        
+        # Add transaction data if converted
+        if converted:
+            try:
+                # Safely convert and handle decimal values
+                purchase_amount = entry.get('purchase_amount')
+                if purchase_amount is None:
+                    purchase_amount = round(random.uniform(10, 500), 2)
+                else:
+                    try:
+                        purchase_amount = round(Decimal(purchase_amount), 2)
+                    except (InvalidOperation, ValueError, TypeError):
+                        purchase_amount = Decimal('0.00')
+
+                discount_code = entry.get('discount_code') or random.choice(discount_codes)
+                
+                # Calculate discount amount safely
+                if discount_code:
+                    discount_amount = round(purchase_amount * Decimal('0.15'), 2)
+                else:
+                    discount_amount = Decimal('0.00')
+
+                # Calculate cost of goods safely
+                try:
+                    cost_of_goods = round(purchase_amount * Decimal('0.6'), 2)
+                except (InvalidOperation, ValueError, TypeError):
+                    cost_of_goods = Decimal('0.00')
+
+                enriched_entry.update({
+                    'transaction_id': entry.get('transaction_id') or f"TRX-{random.randint(10000, 99999)}",
+                    'purchase_amount': purchase_amount,
+                    'currency': entry.get('currency', 'USD'),
+                    'product_id': entry.get('product_id') or f"PROD-{random.randint(100, 999)}",
+                    'product_name': entry.get('product_name') or f"{random.choice(product_categories)} Item {random.randint(1, 100)}",
+                    'product_category': entry.get('product_category') or random.choice(product_categories),
+                    'quantity': entry.get('quantity') or random.randint(1, 5),
+                    'attribution_channel': entry.get('attribution_channel') or random.choice(attribution_channels),
+                    'attribution_campaign': entry.get('attribution_campaign') or (random.choice(utm_campaigns) if random.random() < 0.7 else None),
+                    'discount_code': discount_code,
+                    'discount_amount': discount_amount if discount_code else None,
+                    'customer_segment': entry.get('customer_segment') or random.choice(customer_segments),
+                    'customer_lifetime_value': entry.get('customer_lifetime_value') or round(random.uniform(100, 2000), 2),
+                    'repeat_purchase': entry.get('repeat_purchase', is_returning and random.random() < 0.3),
+                    'days_since_last_purchase': entry.get('days_since_last_purchase') or (random.randint(1, 90) if is_returning else None),
+                    'cost_of_goods_sold': cost_of_goods,
+                    'profit_margin': round((purchase_amount - cost_of_goods) / purchase_amount * 100, 2) if purchase_amount > 0 else 0,
+                    'acquisition_cost': entry.get('acquisition_cost') or round(random.uniform(5, 50), 2),
+                    'roi': round((purchase_amount - cost_of_goods) / random.uniform(5, 50) * 100, 2) if purchase_amount > cost_of_goods else 0
+                })
+            except Exception as e:
+                logger.error(f"Error processing transaction data: {str(e)}")
+                # Continue without transaction data if there's an error
+                pass
+        
+        enriched_entries.append(enriched_entry)
+        
+        # Update last visit time
+        session_info['last_visit'] = entry['timestamp']
     
-    return entries
+    return enriched_entries
 
 def generate_test_data(num_entries=1000):
     """Generate sample log data for testing"""
@@ -302,56 +372,132 @@ def generate_test_data(num_entries=1000):
     
     methods = ['GET', 'POST', 'PUT', 'DELETE']
     resources = [
-        '/index.html',
-        '/images/logo.png',
-        '/event.php',
-        '/scheduledemo.php',
-        '/prototype.php',
-        '/virtual-assistant.php',
-        '/about.html',
-        '/contact.php',
-        '/api/data',
-        '/css/style.css',
-        '/js/main.js'
+        '/index.html', '/products/category', '/cart', '/checkout',
+        '/api/products', '/api/cart', '/api/orders',
+        '/blog/post-1', '/blog/post-2',
+        '/about-us', '/contact',
+        '/static/css/main.css', '/static/js/app.js'
     ]
     statuses = [200, 200, 200, 200, 200, 301, 302, 404, 500]  # Weighted toward 200
     ip_ranges = [
-        '192.168.1.',
-        '10.0.0.',
-        '172.16.0.',
-        '157.20.0.',
-        '128.1.0.'
+        '192.168.1.', '10.0.0.', '172.16.0.',
+        '157.20.0.', '128.1.0.'
+    ]
+    countries = [
+        'United States', 'United Kingdom', 'Canada', 'Germany',
+        'France', 'Japan', 'Australia', 'Brazil', 'India'
+    ]
+    page_categories = [
+        'home', 'product', 'cart', 'checkout', 'blog',
+        'api', 'static', 'about', 'contact'
+    ]
+    utm_sources = [
+        'google', 'facebook', 'twitter', 'email',
+        'direct', 'referral', 'bing', 'linkedin'
+    ]
+    utm_campaigns = [
+        'summer_sale', 'black_friday', 'product_launch',
+        'newsletter', 'social_promotion', 'holiday_special'
+    ]
+    device_types = ['mobile', 'desktop', 'tablet']
+    action_types = [
+        'page_view', 'add_to_cart', 'purchase',
+        'signup', 'login', 'search'
+    ]
+    product_categories = [
+        'electronics', 'clothing', 'books',
+        'home_goods', 'sports', 'beauty'
+    ]
+    attribution_channels = [
+        'organic_search', 'paid_search', 'social',
+        'email', 'direct', 'affiliate'
+    ]
+    customer_segments = [
+        'new', 'returning', 'premium',
+        'vip', 'at_risk', 'inactive'
+    ]
+    discount_codes = [
+        'SUMMER10', 'WELCOME20', 'FLASH50',
+        'SPECIAL25', 'HOLIDAY15', None, None, None  # Make some entries have no discount
     ]
     
     entries = []
     now = datetime.now()
     
-    # Create entries directly rather than going through log parsing
+    # Create entries with all fields
     for _ in range(num_entries):
-        # Generate random time in the past 7 days
-        random_days = random.uniform(0, 7)
-        random_seconds = random.randint(0, 86399)  # seconds in a day
-        timestamp = now - pd.Timedelta(days=random_days) + pd.Timedelta(seconds=random_seconds)
+        # Basic timestamp and time-based calculations
+        random_days = random.uniform(0, 30)  # Last 30 days
+        random_seconds = random.randint(0, 86399)
+        timestamp = now - timedelta(days=random_days, seconds=random_seconds)
         
-        ip = f"{random.choice(ip_ranges)}{random.randint(1, 255)}"
-        method = random.choice(methods)
-        resource = random.choice(resources)
-        status = random.choice(statuses)
+        # Sometimes make it a returning user
+        is_returning = random.random() < 0.4  # 40% chance of returning user
         
+        # Generate visit duration (between 10 seconds and 30 minutes)
+        visit_duration = random.randint(10, 1800)
+        
+        # Determine if this visit resulted in a conversion
+        converted = random.random() < 0.1  # 10% conversion rate
+        
+        # Basic entry data
         entry = {
             'timestamp': timestamp,
-            'ip_address': ip,
-            'http_method': method,
-            'resource': resource,
-            'status_code': status
+            'ip_address': f"{random.choice(ip_ranges)}{random.randint(1, 255)}",
+            'http_method': random.choice(methods),
+            'resource': random.choice(resources),
+            'status_code': random.choice(statuses),
+            'country': random.choice(countries),
+            'page_category': random.choice(page_categories),
+            
+            # Web Traffic & User Behavior
+            'utm_source': random.choice(utm_sources) if random.random() < 0.7 else None,
+            'utm_campaign': random.choice(utm_campaigns) if random.random() < 0.7 else None,
+            'session_id': ''.join(random.choices('0123456789abcdef', k=32)),
+            'user_id': f"user_{random.randint(1, 1000)}" if random.random() < 0.6 else None,
+            'product_interest': random.choice(product_categories) if random.random() < 0.5 else None,
+            'interest_level': random.randint(1, 10) if random.random() < 0.5 else None,
+            'action_type': random.choice(action_types),
+            'converted': converted,
+            'visit_duration_sec': visit_duration,
+            'device_type': random.choice(device_types),
+            'returning_user': is_returning
         }
+        
+        # Add transaction data if converted
+        if converted:
+            purchase_amount = round(random.uniform(10, 500), 2)
+            discount_code = random.choice(discount_codes)
+            discount_amount = round(purchase_amount * 0.15, 2) if discount_code else 0
+            cost_of_goods = round(purchase_amount * 0.6, 2)  # 60% COGS
+            
+            entry.update({
+                'transaction_id': f"TRX-{random.randint(10000, 99999)}",
+                'purchase_amount': purchase_amount,
+                'currency': 'USD',
+                'product_id': f"PROD-{random.randint(100, 999)}",
+                'product_name': f"{random.choice(product_categories)} Item {random.randint(1, 100)}",
+                'product_category': random.choice(product_categories),
+                'quantity': random.randint(1, 5),
+                'attribution_channel': random.choice(attribution_channels),
+                'attribution_campaign': random.choice(utm_campaigns) if random.random() < 0.7 else None,
+                'discount_code': discount_code,
+                'discount_amount': discount_amount if discount_code else None,
+                'customer_segment': round(random.uniform(100, 2000), 2),
+                'customer_lifetime_value': round(random.uniform(100, 2000), 2),
+                'repeat_purchase': is_returning and random.random() < 0.3,
+                'days_since_last_purchase': random.randint(1, 90) if is_returning else None,
+                'cost_of_goods_sold': cost_of_goods,
+                'profit_margin': round((purchase_amount - cost_of_goods) / purchase_amount * 100, 2),
+                'acquisition_cost': round(random.uniform(5, 50), 2),
+                'roi': round((purchase_amount - cost_of_goods) / random.uniform(5, 50) * 100, 2)
+            })
+        
         entries.append(entry)
     
     # Sort by timestamp
     entries.sort(key=lambda x: x['timestamp'])
-    
-    # Enrich with geographical and categorical data
-    return enrich_log_data(entries)
+    return entries
 
 def analyze_log_data(entries):
     """Perform basic analysis on log entries"""
