@@ -290,11 +290,8 @@
 
             // Revenue by Category Chart
             const categoryData = data.revenue_by_category || [];
-            console.log("[DEBUG] Category Data:", categoryData);
             const categoryLabels = categoryData.map(item => item.product_category || "Unknown");
             const categoryValues = categoryData.map(item => item.revenue || 0);
-            console.log("[DEBUG] Category Labels:", categoryLabels);
-            console.log("[DEBUG] Category Values:", categoryValues);
 
             Plotly.newPlot('revenue-category-chart', [{
                 type: 'bar',
@@ -310,11 +307,8 @@
 
             // Revenue by Product Chart
             const productData = data.revenue_by_product || [];
-            console.log("[DEBUG] Product Data:", productData);
             const productLabels = productData.map(item => item.product_name || "Unknown");
             const productValues = productData.map(item => item.revenue || 0);
-            console.log("[DEBUG] Product Labels:", productLabels);
-            console.log("[DEBUG] Product Values:", productValues);
 
             Plotly.newPlot('revenue-product-chart', [{
                 type: 'pie',
@@ -328,11 +322,8 @@
 
             // Customer Segment Chart
             const segmentData = data.segment_breakdown || [];
-            console.log("[DEBUG] Segment Data:", segmentData);
             const segmentLabels = segmentData.map(item => item.customer_segment || "Unknown");
             const segmentValues = segmentData.map(item => item.count || 0);
-            console.log("[DEBUG] Segment Labels:", segmentLabels);
-            console.log("[DEBUG] Segment Values:", segmentValues);
 
             Plotly.newPlot('customer-segment-chart', [{
                 type: 'pie',
@@ -346,11 +337,8 @@
 
             // CLV vs Acquisition Cost Chart
             const clvData = data.clv_vs_acq || [];
-            console.log("[DEBUG] CLV Data:", clvData);
             const clvValues = clvData.map(item => item.customer_lifetime_value || 0);
             const acqValues = clvData.map(item => item.acquisition_cost || 0);
-            console.log("[DEBUG] CLV Values:", clvValues);
-            console.log("[DEBUG] Acquisition Values:", acqValues);
 
             Plotly.newPlot('clv-acquisition-chart', [{
                 type: 'scatter',
@@ -367,6 +355,59 @@
                 xaxis: { title: 'Acquisition Cost' },
                 yaxis: { title: 'Customer Lifetime Value' }
             });
+
+            // Revenue Over Time Chart
+            const revenueTimeData = data.revenue_over_time || [];
+            const dates = revenueTimeData.map(item => item.date);
+            const revenues = revenueTimeData.map(item => item.revenue || 0);
+
+            Plotly.newPlot('revenue-time-chart', [{
+                type: 'scatter',
+                x: dates,
+                y: revenues,
+                mode: 'lines+markers',
+                line: { color: '#0d6efd', width: 2 },
+                marker: { color: '#0d6efd', size: 6 }
+            }], {
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                height: 400,
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Revenue' }
+            });
+
+            // Campaign Performance Chart
+            const campaignData = data.campaign_performance || [];
+            const campaignLabels = campaignData.map(item => item.attribution_campaign || "Unknown");
+            const campaignRevenues = campaignData.map(item => item.revenue || 0);
+            const campaignConversions = campaignData.map(item => item.conversions || 0);
+
+            Plotly.newPlot('campaign-performance-chart', [{
+                type: 'bar',
+                x: campaignLabels,
+                y: campaignRevenues,
+                name: 'Revenue',
+                marker: { color: '#0d6efd' }
+            }, {
+                type: 'bar',
+                x: campaignLabels,
+                y: campaignConversions,
+                name: 'Conversions',
+                marker: { color: '#20c997' }
+            }], {
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                height: 400,
+                barmode: 'group',
+                xaxis: { title: 'Campaign' },
+                yaxis: { title: 'Value' }
+            });
+
+            // Update AI Insights
+            const aiInsights = data.ai_insights || {};
+            document.getElementById('forecast-change').textContent = formatPercentage(aiInsights.forecast_change);
+            document.getElementById('top-segment').textContent = aiInsights.top_segment;
+            document.getElementById('top-segment-clv').textContent = formatCurrency(aiInsights.top_segment_clv);
+            document.getElementById('top-campaign').textContent = aiInsights.top_campaign;
+            document.getElementById('top-campaign-roi').textContent = formatPercentage(aiInsights.top_campaign_roi);
 
         } catch (error) {
             console.error("[DEBUG] Error updating charts:", error);
