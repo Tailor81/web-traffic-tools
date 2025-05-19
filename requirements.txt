@@ -1,67 +1,80 @@
-Django==3.2.25 # Keeping Django 3.2.x for compatibility with django-plotly-dash
-dj-database-url  # Slightly older version for better compatibility
-#Async and HTTP libraries
-aiohappyeyeballs
-aiohttp
-aiosignal
-attrs
-yarl
-multidict
-frozenlist
-#Web server and ASGI
-asgiref
-channels
-gunicorn
-whitenoise
-#Flask and Dash components
-blinker
-Flask  # Using 2.2.x for compatibility
-Werkzeug  # Match with Flask 2.2.x
-dash
-dash-bootstrap-components
-dash-core-components
-dash-html-components
-dash-table
-django-plotly-dash
-dpd-static-support
-dpd_components
-itsdangerous
-Jinja2
-MarkupSafe
-retrying
-tenacity
-#Security and API
-certifi
-charset-normalizer
-idna
-urllib3
-requests
-#Data processing
-#numpy==1.24.4  # Older version for Python compatibility
-pandas  # Compatible with numpy 1.24.x
-python-dateutil
-pytz
-#Database connectors
-mysql-connector-python
-
-#Data analysis and visualization
-matplotlib
-pillow
-plotly
-scipy  # Compatible with older numpy
-seaborn
-
-#Testing
-pytest-django
-
-
-
-setuptools
-pymongo
-
-
-
-user-agents 
-statsmodels
-scikit-learn
-prophet
+aiohappyeyeballs==2.6.1
+aiohttp==3.11.18
+aiosignal==1.3.2
+asgiref==3.8.1
+attrs==25.3.0
+blinker==1.9.0
+certifi==2025.4.26
+channels==4.0.0
+charset-normalizer==3.4.2
+click==8.2.0
+cmdstanpy==1.2.5
+contourpy==1.3.2
+cycler==0.12.1
+dash==2.9.3
+dash-bootstrap-components==1.7.1
+dash-core-components==2.0.0
+dash-html-components==2.0.0
+dash-table==5.0.0
+dj-database-url==2.2.0
+Django==3.2.25
+django-plotly-dash==2.2.2
+dnspython==2.7.0
+dpd-static-support==0.0.5
+dpd_components==0.1.0
+Flask==3.1.1
+fonttools==4.58.0
+frozenlist==1.6.0
+gunicorn==23.0.0
+holidays==0.72
+idna==3.10
+importlib_resources==6.5.2
+iniconfig==2.1.0
+itsdangerous==2.2.0
+Jinja2==3.1.6
+joblib==1.5.0
+kiwisolver==1.4.8
+MarkupSafe==3.0.2
+matplotlib==3.10.3
+multidict==6.4.3
+mysql-connector-python==9.3.0
+narwhals==1.39.1
+numpy==2.2.6
+packaging==25.0
+pandas==2.2.3
+patsy==1.0.1
+pillow==11.2.1
+plotly==6.1.0
+pluggy==1.6.0
+propcache==0.3.1
+prophet==1.1.6
+psycopg2-binary==2.9.10
+pymongo==4.13.0
+pyodbc==5.2.0
+pyparsing==3.2.3
+pytest==8.3.5
+pytest-django==4.11.1
+python-dateutil==2.9.0.post0
+pytz==2025.2
+requests==2.32.3
+retrying==1.3.4
+scikit-learn==1.6.1
+scipy==1.15.3
+seaborn==0.13.2
+setuptools==80.7.1
+six==1.17.0
+sqlparse==0.5.3
+stanio==0.5.1
+statsmodels==0.14.4
+tenacity==9.1.2
+threadpoolctl==3.6.0
+tqdm==4.67.1
+typing_extensions==4.13.2
+tzdata==2025.2
+ua-parser==1.0.1
+ua-parser-builtins==0.18.0.post1
+urllib3==2.4.0
+user-agents==2.2.0
+Werkzeug==3.1.3
+whitenoise==6.9.0
+yarl==1.20.0

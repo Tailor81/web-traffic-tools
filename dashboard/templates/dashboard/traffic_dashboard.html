@@ -151,31 +151,42 @@
                 }
                 
                 // Traffic time chart
-                const dailyDates = data.daily_traffic.map(item => item.date);
-                const dailyCounts = data.daily_traffic.map(item => item.count);
-                
-                Plotly.newPlot('traffic-time-chart', [{
-                    x: dailyDates,
-                    y: dailyCounts,
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    line: {color: '#0d6efd', width: 3},
-                    marker: {color: '#0d6efd', size: 6}
-                }], {
-                    margin: {l: 40, r: 20, t: 10, b: 40},
-                    xaxis: {title: 'Date'},
-                    yaxis: {title: 'Visits'}
-                });
+                // Add a check to ensure data.daily_traffic exists and is not empty
+                if (data.daily_traffic && data.daily_traffic.length > 0) {
+                    const dailyDates = data.daily_traffic.map(item => item.date);
+                    const dailyCounts = data.daily_traffic.map(item => item.count);
+
+                    Plotly.newPlot('traffic-time-chart', [{
+                        x: dailyDates,
+                        y: dailyCounts,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        line: {color: '#0d6efd', width: 3},
+                        marker: {color: '#0d6efd', size: 6}
+                    }], {
+                        margin: {l: 40, r: 20, t: 10, b: 40},
+                        xaxis: {title: 'Date'},
+                        yaxis: {title: 'Visits'}
+                    });
+                } else {
+                    console.warn('No daily traffic data available');
+                    document.getElementById('traffic-time-chart').textContent = 'No data available';
+                }
                 
                 // Category pie chart
-                Plotly.newPlot('category-pie-chart', [{
-                    labels: data.category_counts.map(item => item.page_category),
-                    values: data.category_counts.map(item => item.count),
-                    type: 'pie',
-                    textinfo: 'percent+label'
-                }], {
-                    margin: {l: 10, r: 10, t: 10, b: 10}
-                });
+                if (data.category_counts && data.category_counts.length > 0) {
+                    Plotly.newPlot('category-pie-chart', [{
+                        labels: data.category_counts.map(item => item.page_category),
+                        values: data.category_counts.map(item => item.count),
+                        type: 'pie',
+                        textinfo: 'percent+label'
+                    }], {
+                        margin: {l: 10, r: 10, t: 10, b: 10}
+                    });
+                } else {
+                    console.warn('No category data available');
+                    document.getElementById('category-pie-chart').textContent = 'No data available';
+                }
                 
                 // Status bar chart
                 const statusColors = {
@@ -188,20 +199,25 @@
                     500: '#dc3545'   // Server Error (red)
                 };
                 
-                const statusCodes = data.status_counts.map(item => item.status_code);
-                const statusValues = data.status_counts.map(item => item.count);
-                const statusColorArray = statusCodes.map(code => statusColors[code] || '#6c757d');
-                
-                Plotly.newPlot('status-bar-chart', [{
-                    x: statusCodes,
-                    y: statusValues,
-                    type: 'bar',
-                    marker: {color: statusColorArray}
-                }], {
-                    margin: {l: 40, r: 20, t: 10, b: 40},
-                    xaxis: {title: 'Status Code'},
-                    yaxis: {title: 'Count'}
-                });
+                if (data.status_counts && data.status_counts.length > 0) {
+                    const statusCodes = data.status_counts.map(item => item.status_code);
+                    const statusValues = data.status_counts.map(item => item.count);
+                    const statusColorArray = statusCodes.map(code => statusColors[code] || '#6c757d');
+
+                    Plotly.newPlot('status-bar-chart', [{
+                        x: statusCodes,
+                        y: statusValues,
+                        type: 'bar',
+                        marker: {color: statusColorArray}
+                    }], {
+                        margin: {l: 40, r: 20, t: 10, b: 40},
+                        xaxis: {title: 'Status Code'},
+                        yaxis: {title: 'Count'}
+                    });
+                } else {
+                    console.warn('No status data available');
+                    document.getElementById('status-bar-chart').textContent = 'No data available';
+                }
             })
             .catch(error => {
                 console.error('Error fetching traffic data:', error);
