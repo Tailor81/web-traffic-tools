@@ -312,10 +312,10 @@ def enrich_log_data(entries):
                 # Safely convert and handle decimal values
                 purchase_amount = entry.get('purchase_amount')
                 if purchase_amount is None:
-                    purchase_amount = round(random.uniform(10, 500), 2)
+                    purchase_amount = Decimal(str(round(random.uniform(10, 500), 2)))
                 else:
                     try:
-                        purchase_amount = round(Decimal(purchase_amount), 2)
+                        purchase_amount = Decimal(str(purchase_amount))
                     except (InvalidOperation, ValueError, TypeError):
                         purchase_amount = Decimal('0.00')
 
@@ -323,15 +323,28 @@ def enrich_log_data(entries):
                 
                 # Calculate discount amount safely
                 if discount_code:
-                    discount_amount = round(purchase_amount * Decimal('0.15'), 2)
+                    discount_amount = (purchase_amount * Decimal('0.15')).quantize(Decimal('0.01'))
                 else:
                     discount_amount = Decimal('0.00')
 
                 # Calculate cost of goods safely
                 try:
-                    cost_of_goods = round(purchase_amount * Decimal('0.6'), 2)
+                    cost_of_goods = (purchase_amount * Decimal('0.6')).quantize(Decimal('0.01'))
                 except (InvalidOperation, ValueError, TypeError):
                     cost_of_goods = Decimal('0.00')
+
+                # Calculate profit margin safely
+                if purchase_amount > 0:
+                    profit_margin = ((purchase_amount - cost_of_goods) / purchase_amount * Decimal('100')).quantize(Decimal('0.01'))
+                else:
+                    profit_margin = Decimal('0.00')
+
+                # Calculate ROI safely
+                acquisition_cost = Decimal(str(round(random.uniform(5, 50), 2)))
+                if acquisition_cost > 0 and purchase_amount > cost_of_goods:
+                    roi = ((purchase_amount - cost_of_goods) / acquisition_cost * Decimal('100')).quantize(Decimal('0.01'))
+                else:
+                    roi = Decimal('0.00')
 
                 enriched_entry.update({
                     'transaction_id': entry.get('transaction_id') or f"TRX-{random.randint(10000, 99999)}",
@@ -346,13 +359,13 @@ def enrich_log_data(entries):
                     'discount_code': discount_code,
                     'discount_amount': discount_amount if discount_code else None,
                     'customer_segment': entry.get('customer_segment') or random.choice(customer_segments),
-                    'customer_lifetime_value': entry.get('customer_lifetime_value') or round(random.uniform(100, 2000), 2),
+                    'customer_lifetime_value': Decimal(str(round(random.uniform(100, 2000), 2))),
                     'repeat_purchase': entry.get('repeat_purchase', is_returning and random.random() < 0.3),
                     'days_since_last_purchase': entry.get('days_since_last_purchase') or (random.randint(1, 90) if is_returning else None),
                     'cost_of_goods_sold': cost_of_goods,
-                    'profit_margin': round((purchase_amount - cost_of_goods) / purchase_amount * 100, 2) if purchase_amount > 0 else 0,
-                    'acquisition_cost': entry.get('acquisition_cost') or round(random.uniform(5, 50), 2),
-                    'roi': round((purchase_amount - cost_of_goods) / random.uniform(5, 50) * 100, 2) if purchase_amount > cost_of_goods else 0
+                    'profit_margin': profit_margin,
+                    'acquisition_cost': acquisition_cost,
+                    'roi': roi
                 })
             except Exception as e:
                 logger.error(f"Error processing transaction data: {str(e)}")
@@ -466,10 +479,23 @@ def generate_test_data(num_entries=1000):
         
         # Add transaction data if converted
         if converted:
-            purchase_amount = round(random.uniform(10, 500), 2)
+            purchase_amount = Decimal(str(round(random.uniform(10, 500), 2)))
             discount_code = random.choice(discount_codes)
-            discount_amount = round(purchase_amount * 0.15, 2) if discount_code else 0
-            cost_of_goods = round(purchase_amount * 0.6, 2)  # 60% COGS
+            discount_amount = (purchase_amount * Decimal('0.15')).quantize(Decimal('0.01')) if discount_code else Decimal('0.00')
+            cost_of_goods = (purchase_amount * Decimal('0.6')).quantize(Decimal('0.01'))  # 60% COGS
+            
+            # Calculate profit margin safely
+            if purchase_amount > 0:
+                profit_margin = ((purchase_amount - cost_of_goods) / purchase_amount * Decimal('100')).quantize(Decimal('0.01'))
+            else:
+                profit_margin = Decimal('0.00')
+
+            # Calculate ROI safely
+            acquisition_cost = Decimal(str(round(random.uniform(5, 50), 2)))
+            if acquisition_cost > 0 and purchase_amount > cost_of_goods:
+                roi = ((purchase_amount - cost_of_goods) / acquisition_cost * Decimal('100')).quantize(Decimal('0.01'))
+            else:
+                roi = Decimal('0.00')
             
             entry.update({
                 'transaction_id': f"TRX-{random.randint(10000, 99999)}",
@@ -483,14 +509,14 @@ def generate_test_data(num_entries=1000):
                 'attribution_campaign': random.choice(utm_campaigns) if random.random() < 0.7 else None,
                 'discount_code': discount_code,
                 'discount_amount': discount_amount if discount_code else None,
-                'customer_segment': round(random.uniform(100, 2000), 2),
-                'customer_lifetime_value': round(random.uniform(100, 2000), 2),
+                'customer_segment': random.choice(customer_segments),
+                'customer_lifetime_value': Decimal(str(round(random.uniform(100, 2000), 2))),
                 'repeat_purchase': is_returning and random.random() < 0.3,
                 'days_since_last_purchase': random.randint(1, 90) if is_returning else None,
                 'cost_of_goods_sold': cost_of_goods,
-                'profit_margin': round((purchase_amount - cost_of_goods) / purchase_amount * 100, 2),
-                'acquisition_cost': round(random.uniform(5, 50), 2),
-                'roi': round((purchase_amount - cost_of_goods) / random.uniform(5, 50) * 100, 2)
+                'profit_margin': profit_margin,
+                'acquisition_cost': acquisition_cost,
+                'roi': roi
             })
         
         entries.append(entry)
