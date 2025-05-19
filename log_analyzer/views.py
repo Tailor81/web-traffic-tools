@@ -69,10 +69,10 @@ def upload_log(request):
 def log_detail(request, log_id):
     """View to show log file details and analysis"""
     log_file = get_object_or_404(LogFile, id=log_id, uploaded_by=request.user)
-    
+
     # Get sample entries (limit to 100 for performance)
     entries = LogEntry.objects.filter(log_file=log_file).order_by('-timestamp')[:100]
-    
+
     # If processing is complete, show analysis
     analysis = None
     if log_file.status == 'completed':
@@ -86,11 +86,41 @@ def log_detail(request, log_id):
                 'resource': entry.resource,
                 'status_code': entry.status_code,
                 'country': entry.country,
-                'page_category': entry.page_category
+                'page_category': entry.page_category,
+                'utm_source': entry.utm_source,
+                'utm_campaign': entry.utm_campaign,
+                'session_id': entry.session_id,
+                'user_id': entry.user_id,
+                'product_interest': entry.product_interest,
+                'interest_level': entry.interest_level,
+                'action_type': entry.action_type,
+                'converted': entry.converted,
+                'visit_duration_sec': entry.visit_duration_sec,
+                'device_type': entry.device_type,
+                'returning_user': entry.returning_user,
+                'transaction_id': entry.transaction_id,
+                'purchase_amount': entry.purchase_amount,
+                'currency': entry.currency,
+                'product_id': entry.product_id,
+                'product_name': entry.product_name,
+                'product_category': entry.product_category,
+                'quantity': entry.quantity,
+                'attribution_channel': entry.attribution_channel,
+                'attribution_campaign': entry.attribution_campaign,
+                'discount_code': entry.discount_code,
+                'discount_amount': entry.discount_amount,
+                'customer_segment': entry.customer_segment,
+                'customer_lifetime_value': entry.customer_lifetime_value,
+                'repeat_purchase': entry.repeat_purchase,
+                'days_since_last_purchase': entry.days_since_last_purchase,
+                'cost_of_goods_sold': entry.cost_of_goods_sold,
+                'profit_margin': entry.profit_margin,
+                'acquisition_cost': entry.acquisition_cost,
+                'roi': entry.roi
             })
-        
+
         analysis = analyze_log_data(entry_dicts)
-    
+
     context = {
         'log_file': log_file,
         'entries': entries,
@@ -110,8 +140,19 @@ def generate_test_log(request):
             csv_buffer = StringIO()
             writer = csv.writer(csv_buffer)
             
-            # Write header
-            writer.writerow(['timestamp', 'ip_address', 'http_method', 'resource', 'status_code', 'country', 'page_category'])
+            # Write header with all fields
+            writer.writerow([
+                'timestamp', 'ip_address', 'http_method', 'resource', 'status_code', 
+                'country', 'page_category', 'utm_source', 'utm_campaign', 'session_id',
+                'user_id', 'product_interest', 'interest_level', 'action_type', 
+                'converted', 'visit_duration_sec', 'device_type', 'returning_user',
+                'transaction_id', 'purchase_amount', 'currency', 'product_id',
+                'product_name', 'product_category', 'quantity', 'attribution_channel',
+                'attribution_campaign', 'discount_code', 'discount_amount',
+                'customer_segment', 'customer_lifetime_value', 'repeat_purchase',
+                'days_since_last_purchase', 'cost_of_goods_sold', 'profit_margin',
+                'acquisition_cost', 'roi'
+            ])
             
             # Generate and write test data
             test_data = generate_test_data(num_entries)
@@ -123,7 +164,37 @@ def generate_test_log(request):
                     entry['resource'],
                     entry['status_code'],
                     entry['country'],
-                    entry['page_category']
+                    entry['page_category'],
+                    entry.get('utm_source', ''),
+                    entry.get('utm_campaign', ''),
+                    entry.get('session_id', ''),
+                    entry.get('user_id', ''),
+                    entry.get('product_interest', ''),
+                    entry.get('interest_level', ''),
+                    entry.get('action_type', ''),
+                    entry.get('converted', False),
+                    entry.get('visit_duration_sec', ''),
+                    entry.get('device_type', ''),
+                    entry.get('returning_user', False),
+                    entry.get('transaction_id', ''),
+                    entry.get('purchase_amount', ''),
+                    entry.get('currency', 'USD'),
+                    entry.get('product_id', ''),
+                    entry.get('product_name', ''),
+                    entry.get('product_category', ''),
+                    entry.get('quantity', ''),
+                    entry.get('attribution_channel', ''),
+                    entry.get('attribution_campaign', ''),
+                    entry.get('discount_code', ''),
+                    entry.get('discount_amount', ''),
+                    entry.get('customer_segment', ''),
+                    entry.get('customer_lifetime_value', ''),
+                    entry.get('repeat_purchase', False),
+                    entry.get('days_since_last_purchase', ''),
+                    entry.get('cost_of_goods_sold', ''),
+                    entry.get('profit_margin', ''),
+                    entry.get('acquisition_cost', ''),
+                    entry.get('roi', '')
                 ])
             
             # Create a response with the CSV file
@@ -168,7 +239,37 @@ def export_log_data(request, log_id):
             'resource': entry.resource,
             'status_code': entry.status_code,
             'country': entry.country,
-            'page_category': entry.page_category
+            'page_category': entry.page_category,
+            'utm_source': entry.utm_source,
+            'utm_campaign': entry.utm_campaign,
+            'session_id': entry.session_id,
+            'user_id': entry.user_id,
+            'product_interest': entry.product_interest,
+            'interest_level': entry.interest_level,
+            'action_type': entry.action_type,
+            'converted': entry.converted,
+            'visit_duration_sec': entry.visit_duration_sec,
+            'device_type': entry.device_type,
+            'returning_user': entry.returning_user,
+            'transaction_id': entry.transaction_id,
+            'purchase_amount': entry.purchase_amount,
+            'currency': entry.currency,
+            'product_id': entry.product_id,
+            'product_name': entry.product_name,
+            'product_category': entry.product_category,
+            'quantity': entry.quantity,
+            'attribution_channel': entry.attribution_channel,
+            'attribution_campaign': entry.attribution_campaign,
+            'discount_code': entry.discount_code,
+            'discount_amount': entry.discount_amount,
+            'customer_segment': entry.customer_segment,
+            'customer_lifetime_value': entry.customer_lifetime_value,
+            'repeat_purchase': entry.repeat_purchase,
+            'days_since_last_purchase': entry.days_since_last_purchase,
+            'cost_of_goods_sold': entry.cost_of_goods_sold,
+            'profit_margin': entry.profit_margin,
+            'acquisition_cost': entry.acquisition_cost,
+            'roi': entry.roi
         })
     
     df = pd.DataFrame(data)
@@ -215,17 +316,44 @@ def process_log_file(log_id):
                 http_method=entry['http_method'],
                 resource=entry['resource'],
                 status_code=entry['status_code'],
-                country=entry['country'],
-                page_category=entry['page_category']
+                country=entry.get('country', 'Unknown'),
+                page_category=entry.get('page_category', 'other'),
+                utm_source=entry.get('utm_source'),
+                utm_campaign=entry.get('utm_campaign'),
+                session_id=entry.get('session_id'),
+                user_id=entry.get('user_id'),
+                product_interest=entry.get('product_interest'),
+                interest_level=entry.get('interest_level'),
+                action_type=entry.get('action_type'),
+                converted=entry.get('converted', False),
+                visit_duration_sec=entry.get('visit_duration_sec'),
+                device_type=entry.get('device_type'),
+                returning_user=entry.get('returning_user', False),
+                transaction_id=entry.get('transaction_id'),
+                purchase_amount=entry.get('purchase_amount'),
+                currency=entry.get('currency', 'USD'),
+                product_id=entry.get('product_id'),
+                product_name=entry.get('product_name'),
+                product_category=entry.get('product_category'),
+                quantity=entry.get('quantity'),
+                attribution_channel=entry.get('attribution_channel'),
+                attribution_campaign=entry.get('attribution_campaign'),
+                discount_code=entry.get('discount_code'),
+                discount_amount=entry.get('discount_amount'),
+                customer_segment=entry.get('customer_segment'),
+                customer_lifetime_value=entry.get('customer_lifetime_value'),
+                repeat_purchase=entry.get('repeat_purchase', False),
+                days_since_last_purchase=entry.get('days_since_last_purchase'),
+                cost_of_goods_sold=entry.get('cost_of_goods_sold'),
+                profit_margin=entry.get('profit_margin'),
+                acquisition_cost=entry.get('acquisition_cost'),
+                roi=entry.get('roi')
             )
             
             # Update progress every 10 entries
             if i % 10 == 0:
                 log_file.entries_processed = i + 1
                 log_file.save()
-                
-                # Simulate slower processing for demonstration
-                time.sleep(0.01)
         
         # Update status to completed
         log_file.status = 'completed'

@@ -251,6 +251,60 @@
             {% endif %}
         </div>
     </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">User Behavior</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong><i class="fas fa-user me-1"></i> UTM Source:</strong>
+                        <span class="ms-2">{{ log_file.utm_source|default:'-' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-bullhorn me-1"></i> UTM Campaign:</strong>
+                        <span class="ms-2">{{ log_file.utm_campaign|default:'-' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-clock me-1"></i> Visit Duration:</strong>
+                        <span class="ms-2">{{ log_file.visit_duration_sec|default:'-' }} seconds</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-mobile-alt me-1"></i> Device Type:</strong>
+                        <span class="ms-2">{{ log_file.device_type|default:'-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Revenue & Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong><i class="fas fa-receipt me-1"></i> Transaction ID:</strong>
+                        <span class="ms-2">{{ log_file.transaction_id|default:'-' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-dollar-sign me-1"></i> Purchase Amount:</strong>
+                        <span class="ms-2">{{ log_file.purchase_amount|default:'-' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-tags me-1"></i> Discount Code:</strong>
+                        <span class="ms-2">{{ log_file.discount_code|default:'-' }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <strong><i class="fas fa-percentage me-1"></i> Discount Amount:</strong>
+                        <span class="ms-2">{{ log_file.discount_amount|default:'-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
